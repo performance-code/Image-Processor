@@ -2,1195 +2,693 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#05060a" />
-<meta name="description" content="GestureX — control an AI-powered image dissection experience with hand gestures." />
-<title>GestureX — AI Image Dissector</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070912'/%3E%3Cpath d='M14 32 L32 14 L50 32 L32 50 Z' fill='none' stroke='%2300eaff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23ff3df0'/%3E%3C/svg%3E" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="theme-color" content="#000" />
+<title>GestureX — Holographic Dissector</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cpath d='M14 32 L32 14 L50 32 L32 50 Z' fill='none' stroke='%2300eaff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23ff3df0'/%3E%3C/svg%3E" />
 
 <style>
   :root {
-    --bg: #05060a;
-    --bg-2: #0a0d18;
-    --panel: rgba(12, 16, 28, 0.62);
-    --panel-strong: rgba(14, 18, 32, 0.92);
-    --line: rgba(120, 200, 255, 0.14);
-    --line-strong: rgba(120, 200, 255, 0.32);
-    --text: #e6f3ff;
-    --text-dim: #93a3b8;
-    --text-mute: #5a6478;
     --cyan: #00eaff;
-    --cyan-soft: rgba(0, 234, 255, 0.18);
     --magenta: #ff3df0;
-    --magenta-soft: rgba(255, 61, 240, 0.18);
-    --lime: #b6ff5d;
     --amber: #ffb547;
-    --rose: #ff5b7e;
-    --violet: #9d6cff;
     --good: #38f5a4;
     --bad: #ff5365;
-    --shadow-glow: 0 0 0 1px var(--line-strong), 0 10px 40px rgba(0, 234, 255, 0.06), 0 0 24px rgba(255, 61, 240, 0.04) inset;
-    --radius: 14px;
-    --radius-sm: 10px;
-    --radius-lg: 22px;
+    --text: #e6f3ff;
+    --dim: #6a7a90;
+    --line: rgba(0,234,255,0.18);
+    --line-strong: rgba(0,234,255,0.45);
+    --bg-glass: rgba(4, 7, 14, 0.55);
     --easing: cubic-bezier(.2,.9,.25,1.05);
   }
-
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-  html { -webkit-text-size-adjust: 100%; }
-  body {
-    font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
-    background:
-      radial-gradient(1100px 800px at 12% -10%, rgba(0, 234, 255, 0.07), transparent 60%),
-      radial-gradient(900px 700px at 90% 110%, rgba(255, 61, 240, 0.07), transparent 60%),
-      linear-gradient(180deg, #04050a 0%, #06080f 100%);
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #000;
     color: var(--text);
+    overflow: hidden;
+    font-family: ui-sans-serif, system-ui, "Inter", "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-    user-select: none;
-    -webkit-user-select: none;
+    user-select: none; -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: none;
   }
 
-  /* ============== AR background (live webcam) ============== */
-  .ar-bg {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    overflow: hidden; opacity: 0;
-    transition: opacity 0.5s ease;
-  }
-  .ar-bg video {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
+  /* ===== Layer 0: live webcam background ===== */
+  #bg-cam {
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
     object-fit: cover;
     transform: scaleX(-1);
-    filter: saturate(0.55) brightness(0.6) contrast(1.05) blur(1.5px);
+    z-index: 0;
+    background: #000;
   }
-  .ar-bg::after {
-    content: ""; position: absolute; inset: 0;
+  #bg-cam.dim { filter: saturate(0.55) brightness(0.55) contrast(1.05); }
+  /* dark vignette + tint always on top of cam */
+  .bg-fx {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
     background:
-      radial-gradient(60% 60% at 50% 50%, transparent 35%, rgba(2,4,10,0.85) 100%),
-      linear-gradient(180deg, rgba(0, 234, 255, 0.07), transparent 30%, rgba(255, 61, 240, 0.07));
-    mix-blend-mode: normal;
+      radial-gradient(70% 60% at 50% 50%, transparent 30%, rgba(0,0,0,0.78) 100%),
+      linear-gradient(180deg, rgba(0,234,255,0.05), transparent 30%, rgba(255,61,240,0.05));
   }
-  body.ar .ar-bg { opacity: 1; }
-  body.ar .grid-bg { opacity: 0.35; }
-  body.ar .scan { opacity: 0.2; }
-
-  /* ============== Background grid ============== */
-  .grid-bg {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.18;
     background-image:
-      linear-gradient(rgba(120, 200, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(120, 200, 255, 0.05) 1px, transparent 1px);
-    background-size: 56px 56px, 56px 56px;
-    mask-image: radial-gradient(ellipse 75% 60% at 50% 50%, #000 35%, transparent 80%);
-    -webkit-mask-image: radial-gradient(ellipse 75% 60% at 50% 50%, #000 35%, transparent 80%);
-    animation: gridDrift 28s linear infinite;
+      linear-gradient(rgba(0,234,255,0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,234,255,0.5) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 70% 55% at 50% 50%, #000 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 50%, #000 30%, transparent 80%);
   }
-  @keyframes gridDrift {
-    0% { background-position: 0 0, 0 0; }
-    100% { background-position: 56px 56px, 56px 56px; }
-  }
-  .scan {
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background: linear-gradient(180deg, transparent 0%, rgba(0, 234, 255, 0.05) 50%, transparent 100%);
+  .bg-scan {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.35;
+    background: linear-gradient(180deg, transparent 0%, rgba(0,234,255,0.15) 50%, transparent 100%);
     background-size: 100% 220%;
-    animation: scanMove 9s linear infinite;
-    mix-blend-mode: screen; opacity: 0.45;
+    animation: scan 8s linear infinite;
+    mix-blend-mode: screen;
   }
-  @keyframes scanMove { 0% { background-position: 0 -100%; } 100% { background-position: 0 100%; } }
+  @keyframes scan { 0% { background-position: 0 -100%; } 100% { background-position: 0 100%; } }
 
-  /* ============== App shell ============== */
-  .app {
-    position: fixed; inset: 0; z-index: 1;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    overflow: hidden;
+  /* ===== Layer 2: WebGL canvas ===== */
+  #gl {
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
+    z-index: 2;
+    pointer-events: none;
   }
 
-  /* ============== Header ============== */
-  header.top {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--line);
-    background: linear-gradient(180deg, rgba(8, 10, 18, 0.7), rgba(8, 10, 18, 0));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    z-index: 5;
-  }
-  .brand {
+  /* ===== Layer 3: HUD ===== */
+  .hud { position: fixed; z-index: 4; pointer-events: none; }
+  .hud > * { pointer-events: auto; }
+
+  /* Top-left logo */
+  .top-left {
+    top: 14px; left: 16px;
     display: flex; align-items: center; gap: 10px;
-    min-width: 0;
   }
-  .brand-mark {
-    width: 32px; height: 32px;
-    border-radius: 9px;
-    background: radial-gradient(circle at 30% 30%, rgba(0, 234, 255, 0.55), transparent 60%),
-                radial-gradient(circle at 70% 70%, rgba(255, 61, 240, 0.6), transparent 60%),
-                #0a0e18;
+  .logo-mark {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(0,234,255,0.6), transparent 60%),
+      radial-gradient(circle at 70% 70%, rgba(255,61,240,0.6), transparent 60%),
+      #050810;
     border: 1px solid var(--line-strong);
+    box-shadow: 0 0 16px rgba(0,234,255,0.3);
     position: relative;
-    box-shadow: 0 0 18px rgba(0, 234, 255, 0.25);
   }
-  .brand-mark::after {
-    content: ""; position: absolute; inset: 6px;
-    border: 1px solid rgba(255,255,255,0.18); border-radius: 5px;
+  .logo-mark::after {
+    content: ""; position: absolute; inset: 5px;
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
     transform: rotate(45deg);
   }
-  .brand-name {
-    font-weight: 700; letter-spacing: 0.18em; font-size: 13px;
-    text-transform: uppercase;
-  }
-  .brand-name b { color: var(--cyan); }
-  .brand-tag {
-    font-size: 11px; color: var(--text-mute); letter-spacing: 0.18em; text-transform: uppercase;
-    margin-left: 4px;
-  }
-  .top-actions {
+  .logo-text { font-weight: 700; letter-spacing: 0.22em; font-size: 11px; text-transform: uppercase; }
+  .logo-text b { color: var(--cyan); }
+
+  /* Top-right status */
+  .top-right {
+    top: 12px; right: 14px;
     display: flex; align-items: center; gap: 8px;
   }
-
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 9px 14px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--line);
-    color: var(--text);
-    border-radius: 10px;
-    font: inherit; font-size: 13px; font-weight: 500;
-    cursor: pointer; line-height: 1;
-    transition: all 0.18s var(--easing);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-  .btn:hover { border-color: var(--line-strong); background: rgba(0, 234, 255, 0.06); transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); }
-  .btn .ico { width: 16px; height: 16px; flex: 0 0 auto; }
-  .btn-pri {
-    background: linear-gradient(135deg, rgba(0, 234, 255, 0.16), rgba(255, 61, 240, 0.14));
-    border-color: rgba(0, 234, 255, 0.45);
-    color: white;
-    box-shadow: 0 0 18px rgba(0, 234, 255, 0.18), inset 0 1px 0 rgba(255,255,255,0.08);
-  }
-  .btn-pri:hover { box-shadow: 0 0 28px rgba(0, 234, 255, 0.32); }
-  .btn-ghost { background: transparent; }
-  .btn-icon { padding: 8px; width: 36px; height: 36px; }
-  .btn[disabled] { opacity: 0.45; pointer-events: none; }
-
   .pill {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 9px;
+    padding: 5px 9px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--line);
     border-radius: 999px;
-    font-size: 11px; color: var(--text-dim);
-    background: rgba(0, 0, 0, 0.25);
-    letter-spacing: 0.06em; text-transform: uppercase;
+    font: 10px/1 ui-monospace, monospace;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--dim);
   }
-  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-mute); }
-  .pill.live .dot { background: var(--good); box-shadow: 0 0 8px var(--good); animation: pulse 1.4s infinite; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+  .pill.ok { color: var(--good); border-color: rgba(56,245,164,0.35); }
+  .pill.ok .dot { background: var(--good); box-shadow: 0 0 8px var(--good); animation: pulse 1.6s infinite; }
+  .pill.warn { color: var(--amber); border-color: rgba(255,181,71,0.35); }
   .pill.warn .dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .pill.bad { color: var(--bad); border-color: rgba(255,83,101,0.35); }
   .pill.bad .dot { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-  /* ============== Stage ============== */
-  .stage-wrap {
-    position: relative;
-    overflow: hidden;
-    perspective: 1400px;
-    perspective-origin: 50% 50%;
-  }
-  #stage {
-    position: absolute; inset: 0;
-    transform-style: preserve-3d;
-    transition: transform 0.4s var(--easing);
-  }
-
-  /* Image preview container */
-  .preview-card {
-    position: absolute; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    max-width: min(60vw, 560px);
-    max-height: min(64vh, 560px);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: 1px solid var(--cyan);
-    background: rgba(8, 10, 18, 0.4);
-    box-shadow:
-      0 25px 80px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(0, 234, 255, 0.4) inset,
-      0 0 60px rgba(0, 234, 255, 0.25),
-      0 0 120px rgba(255, 61, 240, 0.15);
-    transition: opacity 0.4s var(--easing), transform 0.6s var(--easing), filter 0.5s ease;
-    transform-style: preserve-3d;
-    will-change: transform;
-  }
-  .preview-card::before {
-    content: "";
-    position: absolute; inset: -1px;
-    border-radius: var(--radius-lg);
-    background:
-      linear-gradient(135deg, transparent 30%, rgba(0,234,255,0.5) 50%, transparent 70%),
-      linear-gradient(225deg, transparent 30%, rgba(255,61,240,0.4) 50%, transparent 70%);
-    pointer-events: none;
-    opacity: 0.35;
-    mix-blend-mode: screen;
-    z-index: 3;
-  }
-  .preview-card::after {
-    content: "";
-    position: absolute; inset: 0;
-    background:
-      repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(0,234,255,0.05) 3px, rgba(0,234,255,0.05) 4px);
-    pointer-events: none;
-    z-index: 2;
-  }
-  /* Hologram corner ticks */
-  .preview-card .corners { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-  .preview-card .corners i {
-    position: absolute; width: 24px; height: 24px;
-    border: 2px solid var(--cyan);
-    box-shadow: 0 0 12px rgba(0,234,255,0.6);
-  }
-  .preview-card .corners i:nth-child(1) { left: 8px; top: 8px; border-right: 0; border-bottom: 0; }
-  .preview-card .corners i:nth-child(2) { right: 8px; top: 8px; border-left: 0; border-bottom: 0; }
-  .preview-card .corners i:nth-child(3) { left: 8px; bottom: 8px; border-right: 0; border-top: 0; }
-  .preview-card .corners i:nth-child(4) { right: 8px; bottom: 8px; border-left: 0; border-top: 0; }
-  .preview-card.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(0.9); }
-  .preview-card img {
-    display: block;
-    width: 100%; height: 100%;
-    max-width: min(78vw, 720px);
-    max-height: min(72vh, 720px);
-    object-fit: contain;
-    user-select: none; -webkit-user-drag: none;
-  }
-  .preview-card .scan-line {
-    position: absolute; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-    box-shadow: 0 0 12px var(--cyan);
-    top: 0; opacity: 0; pointer-events: none;
-  }
-  .preview-card.scanning .scan-line {
-    opacity: 1;
-    animation: scanLine 1.6s linear infinite;
-  }
-  @keyframes scanLine {
-    0% { top: 0; }
-    100% { top: 100%; }
-  }
-  .preview-card.scanning::after {
-    content: "ANALYZING";
-    position: absolute; left: 14px; top: 12px;
-    padding: 6px 10px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid var(--cyan);
-    border-radius: 6px;
-    font-size: 11px; letter-spacing: 0.2em; color: var(--cyan);
-    text-shadow: 0 0 8px var(--cyan);
-  }
-
-  /* Drop zone */
-  .dropzone {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    pointer-events: none;
-    opacity: 0; visibility: hidden;
-    transition: opacity 0.25s ease, visibility 0.25s ease;
-  }
-  .dropzone.show { pointer-events: auto; opacity: 1; visibility: visible; }
-  .dropzone-inner {
-    pointer-events: auto;
-    width: min(86vw, 540px);
-    padding: 56px 32px;
-    border-radius: var(--radius-lg);
-    border: 2px dashed var(--line-strong);
-    background: rgba(8, 10, 18, 0.55);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    text-align: center;
+  .icon-btn {
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-glass);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.3s var(--easing), box-shadow 0.2s ease;
+    transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
   }
-  .dropzone-inner:hover { border-color: var(--cyan); transform: translateY(-2px); box-shadow: 0 0 60px rgba(0,234,255,0.15); }
-  .dropzone.dragging .dropzone-inner {
-    border-color: var(--magenta);
-    background: rgba(255, 61, 240, 0.06);
-    transform: scale(1.02);
-    box-shadow: 0 0 60px rgba(255, 61, 240, 0.18);
-  }
-  .dropzone-icon {
-    width: 64px; height: 64px; margin: 0 auto 16px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, rgba(0, 234, 255, 0.2), rgba(255, 61, 240, 0.14));
-    border: 1px solid var(--line-strong);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .dropzone-title { font-size: 18px; font-weight: 600; margin: 0 0 6px; letter-spacing: 0.02em; }
-  .dropzone-sub { font-size: 13px; color: var(--text-dim); margin: 0; }
-  .dropzone-sub kbd {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid var(--line-strong);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-family: ui-monospace, monospace; font-size: 11px;
-  }
+  .icon-btn:hover { border-color: var(--line-strong); background: rgba(0,234,255,0.08); transform: translateY(-1px); }
+  .icon-btn:active { transform: translateY(0); }
+  .icon-btn svg { stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* Parts layer (exploded) */
-  #parts-layer {
-    position: absolute; inset: 0; pointer-events: none;
-    transform-style: preserve-3d;
+  /* Bottom HUD: minimal — current state + tiny gesture hint */
+  .bottom {
+    bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    text-align: center;
   }
-  .part-card {
-    position: absolute;
-    left: 50%; top: 50%;
-    width: 168px;
-    padding: 10px 12px 12px;
-    background: rgba(10, 14, 24, 0.78);
+  .state-chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 9px 16px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    font: 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 24px rgba(0,234,255,0.18);
+  }
+  .state-chip .glyph {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+  }
+  .gesture-hint {
+    font: 10.5px/1.5 ui-monospace, monospace;
+    letter-spacing: 0.14em; color: var(--dim);
+    text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    max-width: 440px;
+  }
+  .gesture-hint b { color: var(--cyan); }
+
+  /* Welcome overlay (only shows before first image) */
+  .welcome {
+    position: fixed; inset: 0; z-index: 6;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+  }
+  .welcome.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+  .welcome-card {
+    width: min(520px, 92vw);
+    padding: 32px;
+    border: 1px solid var(--line-strong);
+    border-radius: 22px;
+    background: rgba(4,7,14,0.8);
+    box-shadow: 0 30px 100px rgba(0,0,0,0.7), 0 0 80px rgba(0,234,255,0.18);
+    text-align: center;
+  }
+  .welcome-card h1 {
+    margin: 0 0 6px; font-size: 22px; font-weight: 700; letter-spacing: 0.18em;
+    background: linear-gradient(120deg, #fff, var(--cyan));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-transform: uppercase;
+  }
+  .welcome-card .subtitle {
+    margin: 0 0 22px; color: var(--dim); font-size: 12.5px; letter-spacing: 0.06em;
+  }
+  .cta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+  }
+  .cta button, .ghost-btn {
+    padding: 14px 16px;
+    background: rgba(0,234,255,0.05);
     border: 1px solid var(--line-strong);
     border-radius: 12px;
-    box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    pointer-events: auto;
-    transform: translate(-50%, -50%) scale(0.4);
-    opacity: 0;
-    transition:
-      transform 0.85s cubic-bezier(.2,1.2,.3,1),
-      opacity 0.5s ease,
-      border-color 0.2s ease,
-      box-shadow 0.2s ease;
-    transform-style: preserve-3d;
-    will-change: transform, opacity;
+    color: var(--text);
+    font: 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s var(--easing);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .part-card .swatch {
-    position: absolute; top: 10px; right: 10px;
-    width: 12px; height: 12px; border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.18);
-    box-shadow: 0 0 10px currentColor;
+  .cta button:hover, .ghost-btn:hover { background: rgba(0,234,255,0.15); transform: translateY(-1px); border-color: var(--cyan); box-shadow: 0 0 24px rgba(0,234,255,0.25); }
+  .cta .secondary { background: rgba(255,61,240,0.05); border-color: rgba(255,61,240,0.45); }
+  .cta .secondary:hover { background: rgba(255,61,240,0.15); border-color: var(--magenta); box-shadow: 0 0 24px rgba(255,61,240,0.25); }
+  .welcome-foot {
+    margin-top: 8px; color: var(--dim); font-size: 11px; line-height: 1.6;
   }
-  .part-card .num {
-    font-family: ui-monospace, "JetBrains Mono", monospace;
-    font-size: 10px; color: var(--text-mute);
-    letter-spacing: 0.18em;
-    margin-bottom: 4px;
+  .welcome-foot b { color: var(--cyan); }
+
+  /* Drag overlay */
+  .drag-overlay {
+    position: fixed; inset: 0; z-index: 8; pointer-events: none;
+    border: 3px dashed transparent;
+    transition: border-color 0.15s ease, background 0.15s ease;
   }
-  .part-card h4 {
-    margin: 0 0 4px; font-size: 13px; font-weight: 600; line-height: 1.25;
-    color: white;
-    padding-right: 18px;
+  .drag-overlay.show { border-color: var(--magenta); background: rgba(255,61,240,0.05); }
+
+  /* Scan-live countdown overlay */
+  .countdown {
+    position: fixed; inset: 0; z-index: 7;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.4);
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
   }
-  .part-card p {
-    margin: 0; font-size: 11px; color: var(--text-dim); line-height: 1.4;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  .countdown.show { opacity: 1; visibility: visible; }
+  .count-num {
+    font: 700 140px/1 ui-monospace, monospace;
+    color: var(--magenta);
+    text-shadow: 0 0 40px var(--magenta), 0 0 80px var(--magenta);
+    animation: countPop 1s ease;
   }
-  .part-card .cat {
-    display: inline-block; margin-top: 6px;
-    font-size: 9px; padding: 2px 6px;
-    text-transform: uppercase; letter-spacing: 0.14em;
-    border-radius: 999px;
-    border: 1px solid currentColor;
-    color: var(--cyan);
-    opacity: 0.9;
-  }
-  .part-card.in {
-    opacity: 1;
-  }
-  .part-card.hover {
-    border-color: var(--cyan);
-    box-shadow: 0 0 0 1px var(--cyan), 0 14px 50px rgba(0,234,255,0.4);
-    z-index: 999;
-  }
-  .part-card.focused {
-    border-color: var(--magenta);
-    box-shadow: 0 0 0 1px var(--magenta), 0 14px 60px rgba(255, 61, 240, 0.4);
-    z-index: 1000;
+  @keyframes countPop { 0% { transform: scale(1.4); opacity: 0; } 30% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.7); opacity: 0; } }
+  .count-label { color: var(--text); font: 12px/1 ui-monospace, monospace; letter-spacing: 0.3em; text-transform: uppercase; margin-top: 16px; }
+  .count-cancel {
+    margin-top: 24px; padding: 8px 18px;
+    background: transparent; border: 1px solid var(--line); color: var(--dim);
+    border-radius: 8px; font: 11px/1 ui-monospace, monospace; letter-spacing: 0.16em;
+    text-transform: uppercase; cursor: pointer;
   }
 
-  /* Connector lines layer */
-  #connectors {
-    position: absolute; inset: 0; pointer-events: none; opacity: 0;
-    transition: opacity 0.4s ease;
+  /* Analyzing spinner */
+  .analyzing {
+    position: fixed; inset: 0; z-index: 6; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.3s ease;
   }
-  #connectors.show { opacity: 0.55; }
+  .analyzing.show { opacity: 1; }
+  .scan-ring {
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--cyan);
+    border-right-color: var(--magenta);
+    animation: spin 1.6s linear infinite;
+    box-shadow: 0 0 60px rgba(0,234,255,0.25);
+    position: relative;
+  }
+  .scan-ring::after {
+    content: "ANALYZING";
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font: 12px/1 ui-monospace, monospace; letter-spacing: 0.3em; color: var(--cyan);
+    text-shadow: 0 0 12px var(--cyan);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Particles canvas */
-  #particles {
-    position: absolute; inset: 0; pointer-events: none; z-index: 4;
+  /* Hand reticles (driven from JS, screen-space) */
+  .reticle {
+    position: fixed; z-index: 5; pointer-events: none;
+    width: 56px; height: 56px;
+    margin: -28px 0 0 -28px;
+    opacity: 0; transition: opacity 0.15s ease;
   }
-
-  /* On-stage hand reticles (pointing finger / pinch position) */
-  .hand-reticle {
-    position: absolute; left: 0; top: 0;
-    width: 60px; height: 60px;
-    margin-left: -30px; margin-top: -30px;
-    pointer-events: none; z-index: 9;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-  }
-  .hand-reticle.show { opacity: 1; }
-  .hand-reticle .ring {
+  .reticle.show { opacity: 1; }
+  .reticle .ring {
     position: absolute; inset: 0;
     border-radius: 50%;
     border: 1.5px solid var(--cyan);
-    box-shadow: 0 0 18px var(--cyan), inset 0 0 8px rgba(0, 234, 255, 0.5);
+    box-shadow: 0 0 16px rgba(0,234,255,0.6), inset 0 0 8px rgba(0,234,255,0.4);
   }
-  .hand-reticle .dot {
-    position: absolute; left: 50%; top: 50%;
-    width: 8px; height: 8px; margin: -4px;
-    border-radius: 50%;
-    background: var(--cyan);
-    box-shadow: 0 0 12px var(--cyan);
+  .reticle .dot {
+    position: absolute; left: 50%; top: 50%; width: 8px; height: 8px;
+    margin: -4px; border-radius: 50%;
+    background: var(--cyan); box-shadow: 0 0 10px var(--cyan);
   }
-  .hand-reticle .arc {
-    position: absolute; inset: -6px;
-    border-radius: 50%;
+  .reticle .arc {
+    position: absolute; inset: -6px; border-radius: 50%;
     border: 2px solid transparent;
     border-top-color: var(--magenta);
     border-right-color: var(--magenta);
-    transform: rotate(0deg);
     opacity: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.1s ease;
   }
-  .hand-reticle.pinching .ring { border-color: var(--magenta); box-shadow: 0 0 22px var(--magenta), inset 0 0 10px rgba(255, 61, 240, 0.6); }
-  .hand-reticle.pinching .dot { background: var(--magenta); box-shadow: 0 0 14px var(--magenta); }
-  .hand-reticle.pinching .arc { opacity: 1; }
-  .hand-reticle .label {
-    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    margin-top: 6px;
-    font: 10px/1 ui-monospace, monospace;
-    letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--cyan);
-    text-shadow: 0 0 8px rgba(0,234,255,0.6);
-    white-space: nowrap;
-  }
-  .hand-reticle.pinching .label { color: var(--magenta); text-shadow: 0 0 8px rgba(255,61,240,0.6); }
+  .reticle.pinch .ring { border-color: var(--magenta); box-shadow: 0 0 22px rgba(255,61,240,0.7), inset 0 0 12px rgba(255,61,240,0.5); }
+  .reticle.pinch .dot { background: var(--magenta); box-shadow: 0 0 14px var(--magenta); }
+  .reticle.pinch .arc { opacity: 1; }
+  .reticle.grabbing .ring { animation: grabPulse 0.9s ease-in-out infinite; }
+  @keyframes grabPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 
-  /* Two-hand gesture progress meter (top-center of stage) */
-  .gesture-meter {
-    position: absolute; left: 50%; top: 92px;
-    transform: translateX(-50%);
-    z-index: 8;
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px;
-    background: rgba(8, 12, 22, 0.7);
-    border: 1px solid var(--line-strong);
-    border-radius: 999px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    font: 11px/1 ui-monospace, monospace;
-    letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--text-dim);
-    opacity: 0; transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-  .gesture-meter.show { opacity: 1; }
-  .gesture-meter .bar {
-    width: 110px; height: 4px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px; overflow: hidden;
-    position: relative;
-  }
-  .gesture-meter .bar > i {
-    display: block; height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--cyan), var(--magenta));
-    transition: width 0.08s linear;
-  }
-  .gesture-meter .bar > b {
-    position: absolute; left: 50%; top: -3px; width: 1px; height: 10px;
-    background: rgba(255,255,255,0.4);
-  }
-  .gesture-meter b.action { color: var(--cyan); font-weight: 600; }
-
-  /* Inspect modal — large detail card */
-  .inspect-mask {
-    position: fixed; inset: 0; z-index: 60;
-    background: rgba(2, 4, 10, 0.4);
+  /* Part labels (3D projected) */
+  #labels { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+  .part-label {
+    position: absolute; left: 0; top: 0;
+    transform: translate(-50%, -50%);
+    padding: 5px 9px;
+    font: 10.5px/1.2 ui-monospace, monospace;
+    letter-spacing: 0.12em;
+    background: rgba(2,5,12,0.78);
     backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.2s ease;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    white-space: nowrap;
+    color: var(--cyan);
+    text-shadow: 0 0 6px rgba(0,0,0,0.8);
+    box-shadow: 0 0 14px rgba(0,234,255,0.25);
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.05s linear;
+    pointer-events: auto;
+    cursor: pointer;
+    max-width: 200px;
   }
-  .inspect-mask.show { opacity: 1; pointer-events: auto; }
-  .inspect {
+  .part-label:hover { background: rgba(0,234,255,0.18); transform: translate(-50%, -50%) scale(1.05); }
+  .part-label.focused {
+    color: var(--magenta);
+    background: rgba(255,61,240,0.18);
+    box-shadow: 0 0 18px rgba(255,61,240,0.5);
+    z-index: 5;
+  }
+  .part-label .num { color: var(--dim); margin-right: 6px; }
+  .part-label .swatch { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 6px currentColor; }
+
+  /* Detail card (when a part is focused / picked) */
+  .detail-card {
+    position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%) translateY(20px);
+    z-index: 6;
     width: min(560px, 92vw);
-    background: var(--panel-strong);
+    padding: 16px 18px 18px;
+    background: rgba(2,5,12,0.85);
+    backdrop-filter: blur(14px);
     border: 1px solid var(--cyan);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 30px 90px rgba(0,0,0,0.7), 0 0 60px rgba(0, 234, 255, 0.25);
-    padding: 22px;
-    transform: translateY(8px) scale(0.97);
-    transition: transform 0.25s var(--easing);
-    position: relative;
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 40px rgba(0,234,255,0.25);
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.25s ease, transform 0.25s var(--easing), visibility 0.25s ease;
   }
-  .inspect-mask.show .inspect { transform: translateY(0) scale(1); }
-  .inspect .close {
-    position: absolute; top: 10px; right: 10px;
-  }
-  .inspect .num {
-    font: 11px/1 ui-monospace, monospace;
-    letter-spacing: 0.2em; color: var(--text-mute);
-    margin-bottom: 6px;
-  }
-  .inspect h2 {
-    margin: 0 0 4px; font-size: 22px; font-weight: 600;
+  .detail-card.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+  .detail-card .head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .detail-card .num { font: 10px/1 ui-monospace, monospace; letter-spacing: 0.2em; color: var(--dim); }
+  .detail-card .name {
+    margin: 0; font-size: 17px; font-weight: 600;
     background: linear-gradient(120deg, #fff, var(--cyan));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .inspect .badge {
-    display: inline-block; margin: 0 0 10px;
-    font-size: 10px; padding: 3px 8px;
-    text-transform: uppercase; letter-spacing: 0.18em;
-    border: 1px solid var(--cyan); color: var(--cyan); border-radius: 999px;
+  .detail-card .badge {
+    margin-left: auto; padding: 3px 8px;
+    font: 9px/1 ui-monospace, monospace; letter-spacing: 0.2em; text-transform: uppercase;
+    border: 1px solid currentColor; color: var(--cyan); border-radius: 999px;
   }
-  .inspect p { margin: 0 0 14px; line-height: 1.55; color: var(--text-dim); }
-  .inspect .crop {
-    width: 100%; aspect-ratio: 16/9;
-    border-radius: 12px;
-    background-size: cover; background-position: center;
-    border: 1px solid var(--line-strong);
-    box-shadow: 0 0 30px rgba(0,234,255,0.15);
-    margin-bottom: 14px;
+  .detail-card .desc {
+    margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--text);
+    opacity: 0.86;
   }
-  .inspect .meta {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-    font: 11px/1.4 ui-monospace, monospace; color: var(--text-dim);
-  }
-  .inspect .meta .k { color: var(--text-mute); display: block; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2px; }
-
-  /* ============== Right panel: parts list ============== */
-  .right-panel {
-    position: absolute; right: 12px; top: 84px; bottom: 96px;
-    width: 280px; max-width: 32vw;
-    background: var(--panel);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 10px;
-    z-index: 6;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    transition: transform 0.4s var(--easing), opacity 0.3s ease;
-  }
-  .right-panel.hidden { transform: translateX(110%); opacity: 0; pointer-events: none; }
-  .rp-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 6px 8px;
-    border-bottom: 1px solid var(--line);
-  }
-  .rp-head h3 {
-    margin: 0; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim);
-  }
-  .rp-head .count {
-    font-family: ui-monospace, monospace; font-size: 11px; color: var(--cyan);
-  }
-  .rp-list {
-    flex: 1; overflow-y: auto; margin-top: 6px;
-    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
-  }
-  .rp-list::-webkit-scrollbar { width: 6px; }
-  .rp-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-  .rp-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 8px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.18s ease;
-    border: 1px solid transparent;
-  }
-  .rp-item:hover { background: rgba(255,255,255,0.04); }
-  .rp-item.focused { background: rgba(255, 61, 240, 0.08); border-color: rgba(255, 61, 240, 0.4); }
-  .rp-item .sw {
-    width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto;
-    box-shadow: 0 0 8px currentColor;
-  }
-  .rp-item .name { flex: 1; min-width: 0; font-size: 12.5px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-  .rp-item .num { font-family: ui-monospace, monospace; font-size: 10px; color: var(--text-mute); }
-
-  /* ============== Bottom HUD ============== */
-  .hud {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px;
-    border-top: 1px solid var(--line);
-    background: linear-gradient(0deg, rgba(8, 10, 18, 0.85), rgba(8, 10, 18, 0));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    z-index: 5;
-    gap: 12px;
-    min-height: 64px;
-  }
-  .hud-left, .hud-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .hud-center {
-    flex: 1; display: flex; align-items: center; justify-content: center;
-    min-width: 0;
-  }
-  .gesture-label {
-    font-family: ui-monospace, "JetBrains Mono", monospace;
-    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--text-dim);
-    transition: color 0.2s ease;
-    text-align: center;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .gesture-label b { color: var(--cyan); text-shadow: 0 0 10px rgba(0, 234, 255, 0.6); }
-  .conf-meter {
-    width: 120px; height: 4px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px; overflow: hidden;
-    margin-left: 10px;
-  }
-  .conf-meter > i {
-    display: block; height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--magenta), var(--cyan));
-    transition: width 0.2s ease;
+  .detail-card .close {
+    position: absolute; top: 8px; right: 8px;
+    width: 26px; height: 26px;
   }
 
-  /* ============== Camera widget ============== */
-  .cam-widget {
-    position: absolute; right: 12px; bottom: 84px;
-    width: 200px; height: 150px;
-    border-radius: var(--radius);
-    overflow: hidden;
-    border: 1px solid var(--line-strong);
-    background: #000;
-    box-shadow: 0 16px 50px rgba(0,0,0,0.55), 0 0 24px rgba(0, 234, 255, 0.15);
-    z-index: 8;
-    transition: transform 0.3s var(--easing), opacity 0.3s ease;
-  }
-  .cam-widget.hidden { transform: translateY(220%); opacity: 0; pointer-events: none; }
-  .cam-widget.has-right-panel { right: 304px; }
-  .cam-widget video, .cam-widget canvas {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1);
-  }
-  .cam-widget .cam-bar {
-    position: absolute; left: 0; right: 0; top: 0;
-    padding: 6px 8px;
-    display: flex; align-items: center; justify-content: space-between;
-    background: linear-gradient(180deg, rgba(0,0,0,0.55), transparent);
-    z-index: 2;
-    font-size: 10px; color: var(--text-dim);
-    letter-spacing: 0.14em; text-transform: uppercase;
-    pointer-events: none;
-  }
-  .cam-widget .cam-bar .live-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--rose); box-shadow: 0 0 8px var(--rose);
-    animation: pulse 1.4s infinite; margin-right: 4px; display: inline-block;
-  }
-  .cam-widget .cam-status {
-    position: absolute; left: 8px; bottom: 6px;
-    font-family: ui-monospace, monospace; font-size: 10px;
-    color: var(--cyan);
-    text-shadow: 0 0 6px rgba(0, 234, 255, 0.4);
-    z-index: 2;
-  }
-
-  /* ============== Gesture guide ============== */
-  .gesture-guide {
-    position: absolute; left: 12px; top: 84px;
-    width: 240px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 12px;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    z-index: 6;
-    transition: transform 0.4s var(--easing), opacity 0.3s ease;
-  }
-  .gesture-guide.hidden { transform: translateX(-110%); opacity: 0; pointer-events: none; }
-  .gg-head {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 8px;
-  }
-  .gg-head h3 { margin: 0; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
-  .gg-list { display: grid; gap: 6px; }
-  .gg-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 8px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: rgba(255,255,255,0.02);
-    transition: background 0.18s ease, border-color 0.18s ease;
-  }
-  .gg-item.active {
-    background: rgba(0, 234, 255, 0.08);
-    border-color: var(--cyan);
-    box-shadow: 0 0 18px rgba(0, 234, 255, 0.18);
-  }
-  .gg-emoji { font-size: 18px; line-height: 1; }
-  .gg-text { display: flex; flex-direction: column; min-width: 0; }
-  .gg-text b { font-size: 12px; font-weight: 600; }
-  .gg-text span { font-size: 11px; color: var(--text-dim); }
-
-  /* ============== Modals ============== */
+  /* Settings modal */
   .modal-mask {
     position: fixed; inset: 0; z-index: 50;
-    background: rgba(2, 4, 10, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
     padding: 20px;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.25s ease;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
   }
-  .modal-mask.show { opacity: 1; pointer-events: auto; }
+  .modal-mask.show { opacity: 1; visibility: visible; }
   .modal {
-    width: min(520px, 100%);
-    max-height: 90vh; overflow-y: auto;
-    background: var(--panel-strong);
+    width: min(480px, 100%);
+    background: rgba(4,7,14,0.94);
     border: 1px solid var(--line-strong);
-    border-radius: var(--radius-lg);
+    border-radius: 18px;
     padding: 22px;
-    box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 0 60px rgba(0, 234, 255, 0.08);
-    transform: translateY(8px) scale(0.98);
-    transition: transform 0.3s var(--easing);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 60px rgba(0,234,255,0.12);
   }
-  .modal-mask.show .modal { transform: translateY(0) scale(1); }
-  .modal h2 { margin: 0 0 4px; font-size: 17px; font-weight: 600; letter-spacing: 0.02em; }
-  .modal h2 .accent { color: var(--cyan); }
-  .modal p.sub { margin: 0 0 16px; color: var(--text-dim); font-size: 13px; }
-  .modal label { display: block; font-size: 11px; color: var(--text-dim); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; }
+  .modal h2 { margin: 0 0 4px; font-size: 16px; letter-spacing: 0.04em; }
+  .modal .sub { margin: 0 0 16px; color: var(--dim); font-size: 12.5px; }
+  .modal label { display: block; font: 10px/1 ui-monospace, monospace; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin: 12px 0 6px; }
   .modal input[type=text], .modal input[type=password] {
-    width: 100%; padding: 11px 12px;
-    background: rgba(0,0,0,0.45);
+    width: 100%; padding: 10px 12px;
+    background: rgba(0,0,0,0.4);
     border: 1px solid var(--line-strong);
-    border-radius: 10px;
-    color: var(--text); font: inherit; font-size: 13px;
-    font-family: ui-monospace, "JetBrains Mono", monospace;
+    border-radius: 9px;
+    color: var(--text);
+    font: 13px/1 ui-monospace, monospace;
     outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  .modal input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0, 234, 255, 0.18); }
-  .modal .row { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
+  .modal input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0,234,255,0.16); }
   .modal .info {
-    margin-top: 12px;
-    padding: 10px 12px;
-    background: rgba(0, 234, 255, 0.05);
-    border: 1px solid rgba(0, 234, 255, 0.2);
-    border-radius: 10px;
-    font-size: 12px; color: var(--text-dim); line-height: 1.55;
+    margin-top: 12px; padding: 10px;
+    background: rgba(0,234,255,0.06);
+    border: 1px solid rgba(0,234,255,0.2);
+    border-radius: 9px;
+    font-size: 12px; color: var(--dim); line-height: 1.55;
   }
   .modal .info a { color: var(--cyan); }
-  .modal .danger {
-    background: rgba(255, 83, 101, 0.06);
-    border-color: rgba(255, 83, 101, 0.2);
-    color: var(--text-dim);
+  .modal .row {
+    display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap;
   }
-  .modal .toggle-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0;
-    border-top: 1px solid var(--line);
+  .modal .row button {
+    padding: 9px 14px;
+    background: transparent; border: 1px solid var(--line); color: var(--text);
+    border-radius: 8px; cursor: pointer;
+    font: 11px/1 ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase;
   }
-  .toggle-row:first-of-type { border-top: 0; padding-top: 0; }
-  .toggle-row .lbl { font-size: 13px; }
-  .toggle-row .lbl span { display: block; font-size: 11px; color: var(--text-mute); margin-top: 2px; letter-spacing: 0; text-transform: none; }
-
-  /* Switch */
-  .switch {
-    position: relative; width: 44px; height: 24px; flex: 0 0 auto;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    cursor: pointer; transition: background 0.2s ease, border-color 0.2s ease;
-  }
-  .switch::after {
-    content: "";
-    position: absolute; left: 2px; top: 50%;
-    transform: translateY(-50%);
-    width: 18px; height: 18px;
-    background: white;
-    border-radius: 50%;
-    transition: left 0.2s var(--easing);
-  }
-  .switch.on { background: linear-gradient(135deg, rgba(0, 234, 255, 0.6), rgba(255, 61, 240, 0.5)); border-color: transparent; }
-  .switch.on::after { left: 22px; }
-
-  /* History */
-  .history-list { display: grid; gap: 8px; margin-top: 8px; max-height: 360px; overflow-y: auto; }
-  .history-item {
-    display: flex; gap: 10px; align-items: center;
-    padding: 8px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    background: rgba(255,255,255,0.02);
-    cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease;
-  }
-  .history-item:hover { border-color: var(--cyan); transform: translateY(-1px); }
-  .history-item .thumb {
-    width: 56px; height: 56px;
-    border-radius: 8px;
-    background: #000 center/cover no-repeat;
-    border: 1px solid var(--line-strong);
-    flex: 0 0 auto;
-  }
-  .history-item .meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-  .history-item .meta b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .history-item .meta span { font-size: 11px; color: var(--text-mute); }
-  .history-item .meta .tag {
-    font-size: 10px; color: var(--cyan);
-    text-transform: uppercase; letter-spacing: 0.14em;
-  }
-  .empty { padding: 20px; text-align: center; color: var(--text-mute); font-size: 13px; }
+  .modal .row button.primary { background: linear-gradient(135deg, rgba(0,234,255,0.2), rgba(255,61,240,0.16)); border-color: var(--cyan); }
+  .modal .row button:hover { border-color: var(--cyan); }
 
   /* Toast */
-  .toast-wrap {
-    position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
-    z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  #toasts {
+    position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+    z-index: 100; display: flex; flex-direction: column; gap: 6px; align-items: center;
     pointer-events: none;
   }
   .toast {
-    padding: 10px 14px;
-    background: var(--panel-strong);
+    padding: 8px 14px;
+    background: rgba(2,5,12,0.92);
     border: 1px solid var(--line-strong);
-    border-radius: 10px;
-    font-size: 13px;
-    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    animation: toastIn 0.3s var(--easing), toastOut 0.3s ease 2.6s forwards;
+    border-radius: 8px;
+    font-size: 12.5px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.55);
+    animation: tIn 0.25s var(--easing), tOut 0.3s ease 2.6s forwards;
     max-width: 90vw;
   }
   .toast.error { border-color: var(--bad); color: #ffd6db; }
-  .toast.success { border-color: var(--good); color: #d6ffe9; }
-  @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes toastOut { to { transform: translateY(20px); opacity: 0; } }
+  .toast.ok { border-color: var(--good); color: #d6ffe9; }
+  @keyframes tIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes tOut { to { transform: translateY(20px); opacity: 0; } }
 
-  /* Loading bar */
-  .progress {
-    position: absolute; left: 16px; right: 16px; bottom: 76px;
-    height: 2px; overflow: hidden; border-radius: 2px;
-    background: rgba(255,255,255,0.04);
-    opacity: 0; transition: opacity 0.2s ease;
-    z-index: 7;
-  }
-  .progress.show { opacity: 1; }
-  .progress > i {
-    display: block; height: 100%; width: 32%;
-    background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent);
-    animation: progressMove 1.4s linear infinite;
-  }
-  @keyframes progressMove {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(420%); }
-  }
-
-  /* Image-as-particle (post-explosion) ghost */
-  .image-ghost {
-    position: absolute; left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+  /* Two-hand spread meter (top-center while tracking) */
+  .meter {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    z-index: 4; padding: 6px 16px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(10px);
     border: 1px solid var(--line);
-    pointer-events: none;
-    transition: opacity 0.6s ease, filter 0.6s ease, transform 0.6s var(--easing);
+    border-radius: 999px;
+    display: flex; align-items: center; gap: 12px;
+    font: 10px/1 ui-monospace, monospace;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--dim);
+    opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+  .meter.show { opacity: 1; visibility: visible; }
+  .meter-bar {
+    width: 200px; height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px; overflow: hidden;
+    position: relative;
+  }
+  .meter-bar > i {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(90deg, var(--magenta), var(--cyan));
+    transition: left 0.08s linear, width 0.08s linear;
+  }
+  .meter-bar::before, .meter-bar::after {
+    content: ""; position: absolute; top: -3px; height: 10px; width: 1px;
+    background: rgba(255,255,255,0.3);
+  }
+  .meter-bar::before { left: 25%; }
+  .meter-bar::after { left: 75%; }
+  .meter b { color: var(--cyan); }
+
+  /* Camera tracking widget (small, bottom-left) */
+  .cam-widget {
+    position: fixed; bottom: 18px; left: 16px; z-index: 4;
+    width: 156px; height: 117px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 24px rgba(0,234,255,0.15);
+    background: #000;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+  }
+  .cam-widget.show { opacity: 1; visibility: visible; }
+  .cam-widget canvas { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+  .cam-widget .label {
+    position: absolute; left: 8px; top: 6px;
+    font: 9px/1 ui-monospace, monospace; letter-spacing: 0.22em;
+    color: var(--dim); text-transform: uppercase;
+    z-index: 2;
+  }
+  .cam-widget .label .live {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--bad); box-shadow: 0 0 6px var(--bad);
+    animation: pulse 1.4s infinite; margin-right: 5px; vertical-align: middle;
+  }
+  .cam-widget .fps {
+    position: absolute; right: 8px; top: 6px;
+    font: 9px/1 ui-monospace, monospace; color: var(--cyan);
+    z-index: 2;
   }
 
-  /* Misc / utility */
-  .sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
-  .ico { stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-
-  /* ============== Mobile responsive ============== */
-  @media (max-width: 880px) {
-    header.top { padding: 10px 10px; }
-    .brand-tag { display: none; }
-    .right-panel { display: none; }
-    .gesture-guide { width: 200px; top: 70px; left: 8px; padding: 10px; }
-    .gesture-guide.collapsed .gg-list { display: none; }
-    .cam-widget { width: 132px; height: 100px; right: 8px; bottom: 78px; }
-    .cam-widget.has-right-panel { right: 8px; }
-    .hud { padding: 10px 8px; gap: 6px; min-height: 56px; }
-    .gesture-label { font-size: 10px; letter-spacing: 0.1em; }
-    .conf-meter { width: 60px; }
-    .btn { padding: 8px 10px; font-size: 12px; }
-    .btn-icon { padding: 7px; width: 32px; height: 32px; }
-    .part-card { width: 130px; padding: 8px 10px; }
-    .part-card h4 { font-size: 12px; }
-    .part-card p { font-size: 10px; -webkit-line-clamp: 2; }
-    .progress { bottom: 64px; }
-  }
-  @media (max-width: 540px) {
-    .hud-left .lbl-text, .hud-right .lbl-text { display: none; }
-    .gesture-guide { width: 174px; }
-    .gg-text span { display: none; }
+  /* Action buttons row (minimal — bottom-right) */
+  .actions {
+    position: fixed; bottom: 18px; right: 16px; z-index: 4;
+    display: flex; gap: 8px;
   }
 
-  /* Reduced motion */
+  /* Mobile */
+  @media (max-width: 720px) {
+    .top-left .logo-text .full { display: none; }
+    .gesture-hint { font-size: 9.5px; max-width: 280px; }
+    .cam-widget { width: 110px; height: 82px; bottom: 86px; }
+    .meter-bar { width: 140px; }
+    .actions { bottom: 12px; right: 10px; }
+    .icon-btn { width: 30px; height: 30px; }
+    .state-chip { padding: 8px 12px; font-size: 10px; letter-spacing: 0.16em; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .grid-bg, .scan, .preview-card.scanning .scan-line { animation: none !important; }
-    * { transition-duration: 0.01ms !important; }
+    .bg-scan, .scan-ring, .pulse, .grabPulse, .countPop { animation: none !important; }
   }
 </style>
 </head>
 <body>
 
-<div class="ar-bg" aria-hidden="true"><video id="ar-video" autoplay playsinline muted></video></div>
-<div class="grid-bg" aria-hidden="true"></div>
-<div class="scan" aria-hidden="true"></div>
+<!-- Layer 0: live cam background -->
+<video id="bg-cam" autoplay playsinline muted></video>
+<div class="bg-fx"></div>
+<div class="bg-grid"></div>
+<div class="bg-scan"></div>
 
-<div class="app">
-  <!-- ============================ TOP BAR ============================ -->
-  <header class="top">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true"></div>
-      <div>
-        <div class="brand-name">Gesture<b>X</b></div>
-        <div class="brand-tag">AI Image Dissector</div>
-      </div>
-    </div>
+<!-- Layer 2: Three.js holographic display -->
+<canvas id="gl"></canvas>
 
-    <div class="top-actions">
-      <span class="pill" id="api-pill" title="Anthropic API status">
-        <span class="dot"></span><span class="lbl-text">API</span>
-      </span>
-      <span class="pill" id="cam-pill" title="Camera & gesture status">
-        <span class="dot"></span><span class="lbl-text">CAM</span>
-      </span>
-      <button class="btn btn-icon" id="btn-history" title="History" aria-label="History">
-        <svg class="ico" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      </button>
-      <button class="btn btn-icon" id="btn-settings" title="Settings" aria-label="Settings">
-        <svg class="ico" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-      </button>
-    </div>
-  </header>
+<!-- Layer 3: 3D-projected DOM labels -->
+<div id="labels"></div>
 
-  <!-- ============================ STAGE ============================ -->
-  <div class="stage-wrap" id="stage-wrap">
-    <div id="stage">
-      <!-- preview / parts get inserted here -->
-      <div class="preview-card hidden" id="preview-card">
-        <img id="preview-img" alt="Uploaded preview" />
-        <div class="scan-line"></div>
-        <div class="corners"><i></i><i></i><i></i><i></i></div>
-      </div>
-
-      <div id="parts-layer"></div>
-
-      <svg id="connectors" aria-hidden="true"></svg>
-    </div>
-
-    <canvas id="particles" aria-hidden="true"></canvas>
-
-    <!-- Hand reticles overlaid on stage -->
-    <div class="hand-reticle" id="reticle-0" data-hand="0">
-      <div class="ring"></div><div class="arc"></div><div class="dot"></div>
-      <div class="label">HAND A</div>
-    </div>
-    <div class="hand-reticle" id="reticle-1" data-hand="1">
-      <div class="ring"></div><div class="arc"></div><div class="dot"></div>
-      <div class="label">HAND B</div>
-    </div>
-
-    <!-- Two-hand gesture progress meter -->
-    <div class="gesture-meter" id="gesture-meter">
-      <span id="gm-label">SPREAD</span>
-      <span class="bar"><b></b><i id="gm-bar"></i></span>
-      <span id="gm-action" class="action">DISSECT</span>
-    </div>
-
-    <!-- Scan Live countdown overlay -->
-    <div class="dropzone" id="scan-overlay" style="z-index:30;">
-      <div class="dropzone-inner" style="border-style:solid;border-color:var(--magenta);max-width:340px;">
-        <div class="dropzone-icon" style="background:linear-gradient(135deg, rgba(255,61,240,0.3), rgba(0,234,255,0.18));border-color:var(--magenta);">
-          <svg class="ico" viewBox="0 0 24 24" width="28" height="28"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
-        </div>
-        <h3 class="dropzone-title">Hold object up</h3>
-        <p class="dropzone-sub" style="margin:0 0 10px;">Capturing in <b id="scan-count" style="color:var(--magenta);font-size:18px;">3</b>…</p>
-        <button class="btn btn-ghost" id="scan-cancel">Cancel</button>
-      </div>
-    </div>
-
-    <!-- Drop zone -->
-    <div class="dropzone show" id="dropzone">
-      <div class="dropzone-inner" id="dropzone-inner" tabindex="0" role="button" aria-label="Upload image">
-        <div class="dropzone-icon">
-          <svg class="ico" viewBox="0 0 24 24" width="28" height="28"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 20h16"/></svg>
-        </div>
-        <h3 class="dropzone-title">Drop, paste, or pick an image</h3>
-        <p class="dropzone-sub">Any subject — a product, animal, building, machine, dish, plant, or artwork.<br/>
-          Then use <kbd>Space</kbd> or hand gestures to dissect it.</p>
-      </div>
-    </div>
-
-    <!-- Gesture guide -->
-    <aside class="gesture-guide hidden" id="gesture-guide">
-      <div class="gg-head">
-        <h3>Gesture Guide</h3>
-        <button class="btn btn-ghost btn-icon" id="gg-close" title="Hide" aria-label="Hide guide">
-          <svg class="ico" viewBox="0 0 24 24" width="14" height="14"><path d="m6 6 12 12M18 6 6 18"/></svg>
-        </button>
-      </div>
-      <div class="gg-list" id="gg-list">
-        <div class="gg-item" data-g="explode"><div class="gg-emoji">✋✋</div><div class="gg-text"><b>Pinch out</b><span>Two-hand spread → Dissect</span></div></div>
-        <div class="gg-item" data-g="assemble"><div class="gg-emoji">🤏🤏</div><div class="gg-text"><b>Pinch in</b><span>Two-hand close → Reassemble</span></div></div>
-        <div class="gg-item" data-g="palm"><div class="gg-emoji">🖐️</div><div class="gg-text"><b>Open palm</b><span>Pause / freeze</span></div></div>
-        <div class="gg-item" data-g="point"><div class="gg-emoji">👆</div><div class="gg-text"><b>Index point</b><span>Hover & inspect a part</span></div></div>
-        <div class="gg-item" data-g="swipe"><div class="gg-emoji">👉</div><div class="gg-text"><b>Swipe L/R</b><span>Cycle through parts</span></div></div>
-      </div>
-    </aside>
-
-    <!-- Right parts panel -->
-    <aside class="right-panel hidden" id="right-panel" aria-label="Component list">
-      <div class="rp-head">
-        <h3>Components</h3>
-        <span class="count" id="rp-count">0</span>
-      </div>
-      <div class="rp-list" id="rp-list"></div>
-    </aside>
-
-    <!-- Camera widget -->
-    <div class="cam-widget hidden" id="cam-widget">
-      <div class="cam-bar">
-        <span><span class="live-dot"></span>Tracking</span>
-        <span id="cam-fps">— fps</span>
-      </div>
-      <video id="cam-video" autoplay playsinline muted></video>
-      <canvas id="cam-canvas"></canvas>
-      <div class="cam-status" id="cam-status">idle</div>
-    </div>
-
-    <div class="progress" id="progress"><i></i></div>
-  </div>
-
-  <!-- ============================ HUD ============================ -->
-  <footer class="hud">
-    <div class="hud-left">
-      <button class="btn" id="btn-upload" title="Upload image">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 20h16"/></svg>
-        <span class="lbl-text">Upload</span>
-      </button>
-      <button class="btn" id="btn-camera" title="Toggle camera">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        <span class="lbl-text">Camera</span>
-      </button>
-      <button class="btn" id="btn-scan" title="Hold an object up and capture a frame">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/></svg>
-        <span class="lbl-text">Scan Live</span>
-      </button>
-      <button class="btn" id="btn-ar" title="AR background mode">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
-        <span class="lbl-text">AR</span>
-      </button>
-      <button class="btn" id="btn-guide" title="Toggle gesture guide">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M9 11a3 3 0 1 1 6 0c0 2-3 3-3 5"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>
-        <span class="lbl-text">Guide</span>
-      </button>
-    </div>
-
-    <div class="hud-center">
-      <div class="gesture-label" id="gesture-label">
-        <span>Status:</span> <b id="gesture-now">IDLE</b>
-        <span class="conf-meter" aria-hidden="true"><i id="conf-bar"></i></span>
-      </div>
-    </div>
-
-    <div class="hud-right">
-      <button class="btn" id="btn-explode" title="Explode (Space)">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg>
-        <span class="lbl-text">Dissect</span>
-      </button>
-      <button class="btn" id="btn-assemble" title="Reassemble">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M8 8 L4 4 M16 8 L20 4 M8 16 L4 20 M16 16 L20 20 M9 12h6 M12 9v6"/></svg>
-        <span class="lbl-text">Assemble</span>
-      </button>
-      <button class="btn" id="btn-share" title="Screenshot">
-        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
-        <span class="lbl-text">Share</span>
-      </button>
-    </div>
-  </footer>
+<!-- Layer 4: HUD -->
+<div class="hud top-left">
+  <div class="logo-mark"></div>
+  <div class="logo-text">Gesture<b>X</b><span class="full"> · Holographic Dissector</span></div>
 </div>
 
-<!-- ============================ MODALS ============================ -->
+<div class="hud top-right">
+  <span class="pill" id="api-pill"><span class="dot"></span>API</span>
+  <span class="pill" id="cam-pill"><span class="dot"></span>CAM</span>
+  <button class="icon-btn" id="btn-settings" title="Settings (S)" aria-label="Settings">
+    <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</div>
+
+<!-- Two-hand meter -->
+<div class="meter" id="meter">
+  <span id="m-label">SPREAD</span>
+  <div class="meter-bar"><i id="m-fill"></i></div>
+  <span><b id="m-state">FLAT</b></span>
+</div>
+
+<!-- Bottom HUD: state + gesture hint -->
+<div class="hud bottom">
+  <div class="state-chip"><span class="glyph"></span><span id="state-name">READY</span></div>
+  <div class="gesture-hint" id="hint">Two hands → spread to materialise · pinch a part → grab · spread again → explode</div>
+</div>
+
+<!-- Action buttons (only essentials) -->
+<div class="hud actions">
+  <button class="icon-btn" id="btn-upload" title="Upload (U)">
+    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 20h16"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-scan" title="Scan live (L)">
+    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-cam" title="Camera (C)">
+    <svg viewBox="0 0 24 24" width="16" height="16"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </button>
+</div>
+
+<!-- Hand reticles -->
+<div class="reticle" id="ret-0"><div class="ring"></div><div class="arc"></div><div class="dot"></div></div>
+<div class="reticle" id="ret-1"><div class="ring"></div><div class="arc"></div><div class="dot"></div></div>
+
+<!-- Camera tracking widget -->
+<div class="cam-widget" id="cam-widget">
+  <div class="label"><span class="live"></span>TRACKING</div>
+  <div class="fps" id="cam-fps">— fps</div>
+  <canvas id="cam-canvas"></canvas>
+</div>
+
+<!-- Detail card -->
+<div class="detail-card" id="detail">
+  <button class="icon-btn close" id="detail-close" aria-label="Close">
+    <svg viewBox="0 0 24 24" width="12" height="12"><path d="m6 6 12 12M18 6 6 18"/></svg>
+  </button>
+  <div class="head">
+    <div>
+      <div class="num" id="d-num">PART 01 / 00</div>
+      <h3 class="name" id="d-name">—</h3>
+    </div>
+    <div class="badge" id="d-badge">part</div>
+  </div>
+  <p class="desc" id="d-desc">—</p>
+</div>
+
+<!-- Welcome overlay -->
+<div class="welcome" id="welcome">
+  <div class="welcome-card">
+    <h1>Holographic Dissector</h1>
+    <p class="subtitle">A real Jarvis-style interface. Cam-first. Hand-driven.</p>
+    <div class="cta">
+      <button id="welcome-upload">
+        <svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M4 20h16"/></svg>
+        Upload Image
+      </button>
+      <button class="secondary" id="welcome-scan">
+        <svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+        Scan Live
+      </button>
+    </div>
+    <div class="welcome-foot">
+      <b>Spread two hands</b> to materialise the hologram in front of you.<br/>
+      <b>Spread again</b> to explode it into parts. <b>Pinch</b> a part to grab it.<br/>
+      Press <b>S</b> for settings · <b>U</b> upload · <b>L</b> live scan · <b>C</b> camera.
+    </div>
+  </div>
+</div>
+
+<!-- Drag overlay -->
+<div class="drag-overlay" id="drag-overlay"></div>
+
+<!-- Analyzing -->
+<div class="analyzing" id="analyzing"><div class="scan-ring"></div></div>
+
+<!-- Scan-live countdown -->
+<div class="countdown" id="countdown">
+  <div class="count-num" id="count-num">3</div>
+  <div class="count-label">Hold object up</div>
+  <button class="count-cancel" id="count-cancel">Cancel</button>
+</div>
+
+<!-- Toasts -->
+<div id="toasts" aria-live="polite"></div>
+
+<!-- Settings modal -->
 <div class="modal-mask" id="settings-mask">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <h2 id="settings-title">Settings <span class="accent">·</span> <span style="color:var(--text-dim);font-weight:400;font-size:12px;">configure GestureX</span></h2>
-    <p class="sub">Your API key stays in your browser (localStorage). It is sent directly from your device to api.anthropic.com.</p>
+  <div class="modal">
+    <h2>Settings</h2>
+    <p class="sub">Your API key is stored only in this browser.</p>
 
     <label for="api-key">Anthropic API key</label>
-    <input type="password" id="api-key" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" />
+    <input id="api-key" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" />
+
+    <label for="api-model">Model</label>
+    <input id="api-model" type="text" placeholder="claude-sonnet-4-5" autocomplete="off" spellcheck="false" />
     <div class="info">
       Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
-      The first request enables image analysis.
-    </div>
-
-    <label for="api-model" style="margin-top:14px">Model (vision-capable)</label>
-    <input type="text" id="api-model" placeholder="claude-sonnet-4-5" autocomplete="off" spellcheck="false" />
-    <div class="info">
-      Defaults to <code style="color:var(--cyan)">claude-sonnet-4-5</code>. You can also try
-      <code style="color:var(--cyan)">claude-sonnet-4-6</code> or <code style="color:var(--cyan)">claude-opus-4-7</code>.
-      Older snapshots like <code>claude-sonnet-4-20250514</code> may return 404 once retired.
-    </div>
-
-    <div style="margin-top:18px">
-      <div class="toggle-row">
-        <div class="lbl">Sound effects<span>Subtle audio cues on gestures and explosions.</span></div>
-        <div class="switch" id="sw-sound" role="switch" tabindex="0" aria-checked="false"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="lbl">Particle effects<span>Sparks when an image dissects.</span></div>
-        <div class="switch on" id="sw-particles" role="switch" tabindex="0" aria-checked="true"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="lbl">Mirror camera preview<span>Useful when self-facing.</span></div>
-        <div class="switch on" id="sw-mirror" role="switch" tabindex="0" aria-checked="true"></div>
-      </div>
-    </div>
-
-    <div class="info danger" style="margin-top:14px">
-      <b style="color:#ffd6db">Browser-direct mode.</b> Anthropic requires the
-      <code>anthropic-dangerous-direct-browser-access</code> header for browser calls. Don't deploy this with your key embedded — let users supply their own.
+      Default model is <b style="color:var(--cyan)">claude-sonnet-4-5</b>. You can also try <code>claude-sonnet-4-6</code> or <code>claude-opus-4-7</code>.
     </div>
 
     <div class="row">
-      <button class="btn" id="settings-clear">Clear key</button>
-      <button class="btn btn-pri" id="settings-save">Save</button>
+      <button id="settings-clear">Clear</button>
+      <button class="primary" id="settings-save">Save</button>
     </div>
   </div>
 </div>
 
-<div class="inspect-mask" id="inspect-mask">
-  <div class="inspect" role="dialog" aria-modal="true" aria-labelledby="ins-title">
-    <button class="btn btn-ghost btn-icon close" id="ins-close" aria-label="Close">
-      <svg class="ico" viewBox="0 0 24 24" width="14" height="14"><path d="m6 6 12 12M18 6 6 18"/></svg>
-    </button>
-    <div class="num" id="ins-num">PART 01 / 00</div>
-    <h2 id="ins-title">Component</h2>
-    <div class="badge" id="ins-cat">part</div>
-    <div class="crop" id="ins-crop"></div>
-    <p id="ins-desc"></p>
-    <div class="meta">
-      <div><span class="k">Color hint</span><span id="ins-color">—</span></div>
-      <div><span class="k">Size</span><span id="ins-size">—</span></div>
-      <div><span class="k">Position</span><span id="ins-pos">—</span></div>
-    </div>
-  </div>
-</div>
+<!-- File input -->
+<input type="file" id="file" accept="image/*" hidden />
 
-<div class="modal-mask" id="history-mask">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="history-title">
-    <h2 id="history-title">History <span style="color:var(--text-dim);font-weight:400;font-size:12px;">last 5 dissections</span></h2>
-    <p class="sub">Stored locally in your browser. Tap to reload an image and its analysis.</p>
-    <div class="history-list" id="history-list"></div>
-    <div class="row">
-      <button class="btn" id="history-clear">Clear all</button>
-      <button class="btn btn-pri" id="history-close">Close</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast-wrap" id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
-
-<input type="file" id="file-input" accept="image/*" class="sr" />
-
-<!-- ============================ Vendor: MediaPipe ============================ -->
+<!-- ============================ Vendor ============================ -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
 
 <!-- ============================ APP ============================ -->
@@ -1198,105 +696,85 @@
 "use strict";
 
 /* ============================================================
- * GestureX — single-file app
- * Modules below are namespaced under window.GX for clarity.
+ * GestureX 2 — holographic dissector
+ *
+ * Stack:
+ *   - WebGL scene (Three.js) for the 3D model display
+ *   - Live webcam <video> as fullscreen background
+ *   - MediaPipe Hands for gesture input
+ *   - Claude vision API for component analysis
+ *
+ * State machine:
+ *   FLAT      — image as flat plane, lying in XY (z=0)
+ *   HOLO      — image rises off the plane; component crops separate
+ *               into layered Z depths (parallax 3D feel)
+ *   EXPLODED  — components fly out radially in 3D, leaving the
+ *               base outline behind. Each is grabbable.
+ *
+ * Two-hand spread/close cycles forward/back through states.
+ * Two-hand horizontal/vertical motion rotates the whole model.
+ * Single-hand pinch over a component grabs it (any state).
+ * Pinch-tap (no drag) opens the detail card.
  * ============================================================ */
-const GX = {};
-window.GX = GX;
 
-/* ----------------------------- Utils ----------------------------- */
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
-const dist = (x1, y1, x2, y2) => Math.hypot(x1 - x2, y1 - y2);
+const dist2 = (x1, y1, x2, y2) => Math.hypot(x1 - x2, y1 - y2);
 const now = () => performance.now();
 
+/* ----------------------------- Settings & history ----------------------------- */
+const Settings = {
+  KEY: "gx2.settings.v1",
+  data: { apiKey: "", model: "" },
+  load() { try { Object.assign(this.data, JSON.parse(localStorage.getItem(this.KEY) || "{}")); } catch {} },
+  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); } catch {} }
+};
+
+/* ----------------------------- Toast ----------------------------- */
 function toast(msg, kind = "") {
-  const wrap = $("#toast-wrap");
+  const wrap = $("#toasts");
   const el = document.createElement("div");
   el.className = "toast " + kind;
   el.textContent = msg;
   wrap.appendChild(el);
-  setTimeout(() => el.remove(), 3200);
+  setTimeout(() => el.remove(), 3000);
 }
-
-function setPill(id, state, label) {
-  const el = $("#" + id);
-  if (!el) return;
-  el.classList.remove("live", "warn", "bad");
-  if (state) el.classList.add(state);
-  const lbl = el.querySelector(".lbl-text");
-  if (lbl && label) lbl.textContent = label;
+function setPill(id, kind, label) {
+  const el = $("#" + id); if (!el) return;
+  el.classList.remove("ok", "warn", "bad");
+  if (kind) el.classList.add(kind);
+  const txt = el.lastChild;
+  if (txt && txt.nodeType === 3 && label) txt.textContent = label;
 }
-
-/* ----------------------------- Settings ----------------------------- */
-const Settings = {
-  KEY: "gx.settings.v1",
-  data: {
-    apiKey: "",
-    model: "",
-    sound: false,
-    particles: true,
-    mirror: true,
-  },
-  load() {
-    try { Object.assign(this.data, JSON.parse(localStorage.getItem(this.KEY) || "{}")); } catch {}
-  },
-  save() {
-    try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); } catch {}
-  },
-};
-
-const History = {
-  KEY: "gx.history.v1",
-  list: [],
-  load() {
-    try { this.list = JSON.parse(localStorage.getItem(this.KEY) || "[]"); } catch { this.list = []; }
-  },
-  save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch {} },
-  add(entry) {
-    this.list.unshift(entry);
-    this.list = this.list.slice(0, 5);
-    this.save();
-  },
-  clear() { this.list = []; this.save(); }
-};
 
 /* ----------------------------- Audio ----------------------------- */
 const Audio = {
-  ctx: null,
+  ctx: null, enabled: true,
   ensure() {
-    if (!Settings.data.sound) return null;
+    if (!this.enabled) return null;
     if (!this.ctx) {
       try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
     }
     if (this.ctx.state === "suspended") this.ctx.resume();
     return this.ctx;
   },
-  blip(freq = 440, dur = 0.12, type = "sine", gain = 0.06) {
+  beep(f = 440, dur = 0.1, type = "sine", g = 0.06) {
     const ctx = this.ensure(); if (!ctx) return;
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.value = 0;
-    g.gain.linearRampToValueAtTime(gain, ctx.currentTime + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
-    o.connect(g); g.connect(ctx.destination);
+    const o = ctx.createOscillator(), gn = ctx.createGain();
+    o.type = type; o.frequency.value = f;
+    gn.gain.value = 0;
+    gn.gain.linearRampToValueAtTime(g, ctx.currentTime + 0.01);
+    gn.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.connect(gn); gn.connect(ctx.destination);
     o.start(); o.stop(ctx.currentTime + dur);
   },
-  explode() {
-    const ctx = this.ensure(); if (!ctx) return;
-    [220, 330, 440, 660].forEach((f, i) => {
-      setTimeout(() => this.blip(f, 0.16, "triangle", 0.05), i * 40);
-    });
-  },
-  assemble() {
-    [660, 440, 330, 220].forEach((f, i) => {
-      setTimeout(() => this.blip(f, 0.12, "sine", 0.04), i * 50);
-    });
-  },
-  hover() { this.blip(880, 0.05, "sine", 0.025); },
-  click() { this.blip(540, 0.08, "square", 0.03); },
+  morph()  { [220, 440, 880].forEach((f, i) => setTimeout(() => this.beep(f, 0.18, "triangle", 0.05), i * 60)); },
+  unmorph(){ [880, 440, 220].forEach((f, i) => setTimeout(() => this.beep(f, 0.16, "triangle", 0.04), i * 60)); },
+  explode(){ [110, 220, 330, 660, 990].forEach((f, i) => setTimeout(() => this.beep(f, 0.18, "sawtooth", 0.05), i * 35)); },
+  click()  { this.beep(720, 0.06, "square", 0.03); },
+  click2() { this.beep(1100, 0.05, "sine", 0.025); },
 };
 
 /* ----------------------------- Claude API ----------------------------- */
@@ -1305,70 +783,54 @@ const Claude = {
   defaultModel: "claude-sonnet-4-5",
   get model() { return (Settings.data.model || "").trim() || this.defaultModel; },
 
-  async analyzeImage(dataUrl, signal) {
-    if (!Settings.data.apiKey) throw new Error("Missing Anthropic API key — open Settings to add one.");
-
+  async analyze(dataUrl) {
+    if (!Settings.data.apiKey) throw new Error("Add your Anthropic API key in Settings.");
     const m = /^data:(image\/[a-zA-Z+.-]+);base64,(.+)$/.exec(dataUrl);
-    if (!m) throw new Error("Could not read image data.");
+    if (!m) throw new Error("Could not read image.");
     const mediaType = m[1] === "image/jpg" ? "image/jpeg" : m[1];
     const data = m[2];
 
     const sys = [
-      "You are an expert image dissection analyst. Given an image, identify EVERY visually distinct component, part, sub-part, layer, material, or element you can see — products, animals, food, machines, buildings, plants, art, etc.",
-      "Return STRICT JSON, no prose, no markdown fences. Schema:",
-      `{"summary":"1-sentence description of the whole image","parts":[{`
-        + `"id":"kebab-case-id",`
-        + `"name":"short human-readable name",`
-        + `"description":"1-2 sentence factual description",`
-        + `"category":"part|material|surface|element|organ|component|feature",`
-        + `"position_hint":{"x":0..1,"y":0..1},`
-        + `"size_hint":"small|medium|large",`
-        + `"color_hint":"#RRGGBB"`
-        + `}]}`,
+      "You are a precise visual dissector. Given an image, identify EVERY visually distinct part, sub-part, layer, material, or feature.",
+      "STRICT JSON only, no prose, no fences. Schema:",
+      `{"summary":"1 sentence","parts":[{"id":"kebab","name":"<=4 words","description":"1-2 short sentences","category":"part|component|material|surface|element|feature","position_hint":{"x":0..1,"y":0..1},"size_hint":"small|medium|large","color_hint":"#RRGGBB"}]}`,
       "Rules:",
-      "- 6 to 16 parts. Be specific, not generic. Avoid duplicates.",
-      "- position_hint x,y is the part's approximate normalized center within the image (0,0=top-left).",
-      "- color_hint should be a representative dominant color of that part.",
-      "- ALWAYS produce JSON parseable by JSON.parse. Do not wrap in code fences.",
+      "- 6 to 14 parts. Specific, concrete. No duplicates.",
+      "- position_hint = the part's normalized center on the image (0,0 = top-left).",
+      "- size_hint reflects the part's footprint on the image.",
+      "- color_hint = a representative color of that part.",
+      "- Output strictly parseable JSON, no markdown fences.",
     ].join("\n");
-
-    const body = {
-      model: this.model,
-      max_tokens: 2400,
-      system: sys,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data } },
-            { type: "text", text: "Dissect this image. Return JSON only." }
-          ]
-        }
-      ]
-    };
 
     const res = await fetch(this.endpoint, {
       method: "POST",
-      signal,
       headers: {
         "content-type": "application/json",
         "x-api-key": Settings.data.apiKey,
         "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: 2400,
+        system: sys,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data } },
+            { type: "text", text: "Dissect this image. JSON only." }
+          ]
+        }]
+      })
     });
-
     if (!res.ok) {
       let detail = "";
-      try {
-        const j = await res.json();
-        detail = j?.error?.message || JSON.stringify(j);
-      } catch { detail = await res.text().catch(() => ""); }
+      try { const j = await res.json(); detail = j?.error?.message || JSON.stringify(j); }
+      catch { detail = await res.text().catch(() => ""); }
       if (res.status === 404 && /model/i.test(detail)) {
-        throw new Error(`Model "${this.model}" not found. Open Settings and pick a current model (e.g. claude-sonnet-4-5 or claude-opus-4-7).`);
+        throw new Error(`Model "${this.model}" not found. Open Settings and pick a current one.`);
       }
-      throw new Error(`Claude API ${res.status}: ${detail || "request failed"}`);
+      throw new Error(`API ${res.status}: ${detail.slice(0, 220)}`);
     }
     const json = await res.json();
     const text = (json.content || []).filter(c => c.type === "text").map(c => c.text).join("\n").trim();
@@ -1377,20 +839,16 @@ const Claude = {
 
   _parseJSON(text) {
     let raw = text.trim();
-    if (raw.startsWith("```")) {
-      raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
-    }
-    const start = raw.indexOf("{");
-    const end = raw.lastIndexOf("}");
-    if (start === -1 || end === -1) throw new Error("Claude returned non-JSON response.");
-    const slice = raw.slice(start, end + 1);
+    if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+    const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
+    if (s === -1 || e === -1) throw new Error("Claude returned non-JSON.");
     let obj;
-    try { obj = JSON.parse(slice); }
-    catch (e) { throw new Error("Could not parse Claude JSON: " + e.message); }
-    if (!obj || !Array.isArray(obj.parts)) throw new Error("Response missing parts array.");
-    obj.parts = obj.parts.filter(p => p && p.name).slice(0, 16).map((p, i) => ({
-      id: p.id || ("part-" + i),
-      name: String(p.name).slice(0, 80),
+    try { obj = JSON.parse(raw.slice(s, e + 1)); }
+    catch (err) { throw new Error("JSON parse failed: " + err.message); }
+    if (!obj?.parts || !Array.isArray(obj.parts)) throw new Error("Missing parts.");
+    obj.parts = obj.parts.filter(p => p?.name).slice(0, 14).map((p, i) => ({
+      id: p.id || ("p" + i),
+      name: String(p.name).slice(0, 60),
       description: String(p.description || "").slice(0, 220),
       category: String(p.category || "component").toLowerCase(),
       position_hint: {
@@ -1398,456 +856,515 @@ const Claude = {
         y: clamp(Number(p.position_hint?.y ?? 0.5), 0, 1),
       },
       size_hint: ["small", "medium", "large"].includes(p.size_hint) ? p.size_hint : "medium",
-      color_hint: /^#[0-9a-f]{6}$/i.test(p.color_hint || "") ? p.color_hint : null,
+      color_hint: /^#[0-9a-f]{6}$/i.test(p.color_hint || "") ? p.color_hint : "#00eaff",
     }));
     obj.summary = String(obj.summary || "").slice(0, 240);
     return obj;
   }
 };
 
-/* ----------------------------- Particles ----------------------------- */
-const Particles = {
-  canvas: null, ctx: null, items: [], running: false, w: 0, h: 0, dpr: 1,
+/* ----------------------------- Three.js Scene ----------------------------- */
+const Scene = {
+  renderer: null, scene: null, camera: null,
+  root: null,            // model group
+  baseMesh: null,        // full image plane
+  partMeshes: [],        // each component as a textured plane
+  parts: [],
+  imageDims: { W: 0, H: 0 },
+  fullImg: null,
+  hologramRing: null,
+  scanLine: null,        // animated scanning beam
+  particles: null,
+  particleData: null,
+  raycaster: null,
+  ndc: null,
+  state: "idle",         // idle | loading | flat | holo | exploded
+  stateValue: 0,         // 0..2 smoothed: 0 flat, 1 holo, 2 exploded
+  targetState: 0,
+  rotationVel: { x: 0, y: 0 },
+  rotationDamping: 0.92,
+
   init() {
-    this.canvas = $("#particles");
-    this.ctx = this.canvas.getContext("2d");
-    this.resize();
+    if (typeof THREE === "undefined") { toast("Three.js failed to load. Check your network.", "error"); return; }
+
+    const canvas = $("#gl");
+    this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: false });
+    this.renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+    this.renderer.setSize(innerWidth, innerHeight, false);
+    this.renderer.setClearColor(0x000000, 0);
+    if (THREE.SRGBColorSpace) this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 100);
+    this.camera.position.set(0, 0, 5);
+
+    // Lights — colored point lights for hologram glow
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const cyanL = new THREE.PointLight(0x00eaff, 1.4, 12);
+    cyanL.position.set(-3, 2, 4);
+    this.scene.add(cyanL);
+    const magL = new THREE.PointLight(0xff3df0, 1.1, 12);
+    magL.position.set(3, -2, 3);
+    this.scene.add(magL);
+
+    // Root group holds the whole model
+    this.root = new THREE.Group();
+    this.scene.add(this.root);
+
+    // Decorative hologram ring under the model
+    {
+      const g = new THREE.RingGeometry(1.55, 1.6, 96);
+      const m = new THREE.MeshBasicMaterial({
+        color: 0x00eaff, transparent: true, opacity: 0.0, side: THREE.DoubleSide
+      });
+      this.hologramRing = new THREE.Mesh(g, m);
+      this.hologramRing.rotation.x = -Math.PI / 2;
+      this.hologramRing.position.y = -1.6;
+      this.scene.add(this.hologramRing);
+
+      // Inner ring
+      const g2 = new THREE.RingGeometry(1.2, 1.22, 96);
+      const m2 = new THREE.MeshBasicMaterial({
+        color: 0xff3df0, transparent: true, opacity: 0.0, side: THREE.DoubleSide
+      });
+      const ring2 = new THREE.Mesh(g2, m2);
+      ring2.rotation.x = -Math.PI / 2;
+      ring2.position.y = -1.61;
+      this.scene.add(ring2);
+      this.hologramRing.userData.inner = ring2;
+    }
+
+    // Particle field
+    this._initParticles();
+
+    this.raycaster = new THREE.Raycaster();
+    this.ndc = new THREE.Vector2();
+
     addEventListener("resize", () => this.resize(), { passive: true });
-  },
-  resize() {
-    const r = this.canvas.getBoundingClientRect();
-    this.dpr = Math.min(2, devicePixelRatio || 1);
-    this.w = r.width; this.h = r.height;
-    this.canvas.width = r.width * this.dpr;
-    this.canvas.height = r.height * this.dpr;
-    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-  },
-  burst(cx, cy, count = 60, palette = ["#00eaff", "#ff3df0", "#9d6cff", "#b6ff5d"]) {
-    if (!Settings.data.particles) return;
-    for (let i = 0; i < count; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 6;
-      this.items.push({
-        x: cx, y: cy,
-        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
-        life: 60 + Math.random() * 40, max: 100,
-        size: 1 + Math.random() * 2.5,
-        color: palette[(Math.random() * palette.length) | 0],
-      });
-    }
-    this.start();
-  },
-  start() { if (this.running) return; this.running = true; this.tick(); },
-  tick() {
-    if (!this.running) return;
-    const ctx = this.ctx;
-    ctx.clearRect(0, 0, this.w, this.h);
-    for (let i = this.items.length - 1; i >= 0; i--) {
-      const p = this.items[i];
-      p.x += p.vx; p.y += p.vy;
-      p.vx *= 0.96; p.vy *= 0.96;
-      p.life -= 1;
-      const a = clamp(p.life / p.max, 0, 1);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = p.color;
-      ctx.shadowBlur = 12; ctx.shadowColor = p.color;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
-      if (p.life <= 0) this.items.splice(i, 1);
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    if (this.items.length === 0) {
-      this.running = false;
-      ctx.clearRect(0, 0, this.w, this.h);
-      return;
-    }
-    requestAnimationFrame(() => this.tick());
-  }
-};
-
-/* ----------------------------- Stage / Dissection ----------------------------- */
-const Stage = {
-  state: "idle",      // idle | preview | analyzing | exploded | reassembling
-  parts: [],          // current parts data
-  cards: [],          // DOM cards for parts
-  focusedIdx: -1,
-  hoverIdx: -1,
-  paused: false,
-  imgEl: null,
-  imageSrc: null,
-  rect: { w: 0, h: 0 },
-  resizeObs: null,
-
-  init() {
-    this.imgEl = $("#preview-img");
-    this.partsLayer = $("#parts-layer");
-    this.previewCard = $("#preview-card");
-    this.connectors = $("#connectors");
-    this.stageWrap = $("#stage-wrap");
-    this.measure();
-    addEventListener("resize", () => this.measure(), { passive: true });
-  },
-  measure() {
-    const r = this.stageWrap.getBoundingClientRect();
-    this.rect.w = r.width; this.rect.h = r.height;
-    if (this.state === "exploded") this.layoutCards();
+    this.resize();
+    this._loop();
   },
 
-  setImage(src) {
-    this.imageSrc = src;
-    this.imgEl.src = src;
-    this.previewCard.classList.remove("hidden");
-    $("#dropzone").classList.remove("show");
-    this.state = "preview";
-  },
-
-  startAnalyzing() {
-    this.previewCard.classList.add("scanning");
-    $("#progress").classList.add("show");
-    this.state = "analyzing";
-  },
-  endAnalyzing() {
-    this.previewCard.classList.remove("scanning");
-    $("#progress").classList.remove("show");
-  },
-
-  setParts(parts) {
-    this.parts = parts;
-    this.renderRightPanel();
-  },
-
-  renderRightPanel() {
-    const list = $("#rp-list");
-    const count = $("#rp-count");
-    const panel = $("#right-panel");
-    list.innerHTML = "";
-    count.textContent = String(this.parts.length).padStart(2, "0");
-    if (this.parts.length === 0) {
-      panel.classList.add("hidden");
-      $("#cam-widget").classList.remove("has-right-panel");
-      return;
-    }
-    panel.classList.remove("hidden");
-    $("#cam-widget").classList.add("has-right-panel");
-    this.parts.forEach((p, i) => {
-      const el = document.createElement("div");
-      el.className = "rp-item";
-      el.dataset.idx = i;
-      el.innerHTML = `
-        <span class="sw" style="background:${p.color_hint || categoryColor(p.category)};color:${p.color_hint || categoryColor(p.category)}"></span>
-        <span class="name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
-        <span class="num">${String(i + 1).padStart(2, "0")}</span>
-      `;
-      el.addEventListener("mouseenter", () => this.hover(i));
-      el.addEventListener("mouseleave", () => this.hover(-1));
-      el.addEventListener("click", () => {
-        if (this.state !== "exploded") this.explode();
-        this.focus(i, { inspect: true });
-      });
-      list.appendChild(el);
-    });
-  },
-
-  buildCards() {
-    this.partsLayer.innerHTML = "";
-    this.cards = this.parts.map((p, i) => {
-      const el = document.createElement("div");
-      el.className = "part-card";
-      el.dataset.idx = i;
-      const color = p.color_hint || categoryColor(p.category);
-      el.innerHTML = `
-        <span class="swatch" style="background:${color};color:${color}"></span>
-        <div class="num">PART ${String(i + 1).padStart(2, "0")} / ${String(this.parts.length).padStart(2, "0")}</div>
-        <h4>${escapeHtml(p.name)}</h4>
-        <p>${escapeHtml(p.description)}</p>
-        <span class="cat" style="color:${color}">${escapeHtml(p.category)}</span>
-      `;
-      el.addEventListener("mouseenter", () => this.hover(i));
-      el.addEventListener("mouseleave", () => this.hover(-1));
-      el.addEventListener("click", () => this.focus(i, { inspect: true }));
-      this.partsLayer.appendChild(el);
-      return el;
-    });
-  },
-
-  layoutCards() {
-    if (this.cards.length === 0) return;
-    const N = this.cards.length;
-    const rect = this.stageWrap.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const small = Math.min(rect.width, rect.height);
-    const radius = clamp(small * 0.42, 180, 520);
-
-    // Two-ring layout if many parts; single ring otherwise
+  _initParticles() {
+    const N = 240;
+    const geom = new THREE.BufferGeometry();
+    const pos = new Float32Array(N * 3);
+    const seed = new Float32Array(N);
     for (let i = 0; i < N; i++) {
-      const card = this.cards[i];
-      let angle, r;
-      if (N <= 9) {
-        angle = (i / N) * Math.PI * 2 - Math.PI / 2;
-        r = radius;
-      } else {
-        const inner = Math.ceil(N / 2);
-        if (i < inner) {
-          angle = (i / inner) * Math.PI * 2 - Math.PI / 2;
-          r = radius * 0.62;
-        } else {
-          const j = i - inner;
-          const outer = N - inner;
-          angle = (j / outer) * Math.PI * 2 - Math.PI / 2 + Math.PI / outer;
-          r = radius * 1.0;
-        }
-      }
-      // Small offset based on position_hint to feel anchored to original location
-      const hx = (this.parts[i].position_hint.x - 0.5) * 80;
-      const hy = (this.parts[i].position_hint.y - 0.5) * 80;
-      const tx = Math.cos(angle) * r + hx;
-      const ty = Math.sin(angle) * r + hy;
-      const tz = (i % 2 === 0 ? 30 : -30);
-
-      card.style.transform = `translate(-50%, -50%) translate3d(${tx}px, ${ty}px, ${tz}px) rotate(${(angle * 180/Math.PI + 90) * 0.04}deg)`;
-      card.dataset.tx = tx; card.dataset.ty = ty;
-      // staggered entry
-      setTimeout(() => card.classList.add("in"), 30 + i * 35);
+      const a = Math.random() * Math.PI * 2;
+      const r = 1.5 + Math.random() * 3.5;
+      pos[i*3+0] = Math.cos(a) * r;
+      pos[i*3+1] = (Math.random() - 0.5) * 4;
+      pos[i*3+2] = Math.sin(a) * r;
+      seed[i] = Math.random();
     }
-    this.drawConnectors();
-  },
-
-  drawConnectors() {
-    const svg = this.connectors;
-    const rect = this.stageWrap.getBoundingClientRect();
-    svg.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
-    svg.setAttribute("width", rect.width);
-    svg.setAttribute("height", rect.height);
-    svg.innerHTML = "";
-    const cx = rect.width / 2, cy = rect.height / 2;
-    this.cards.forEach((card, i) => {
-      const tx = parseFloat(card.dataset.tx || 0);
-      const ty = parseFloat(card.dataset.ty || 0);
-      const x2 = cx + tx; const y2 = cy + ty;
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", cx); line.setAttribute("y1", cy);
-      line.setAttribute("x2", x2); line.setAttribute("y2", y2);
-      const c = this.parts[i].color_hint || categoryColor(this.parts[i].category);
-      line.setAttribute("stroke", c);
-      line.setAttribute("stroke-width", "1");
-      line.setAttribute("stroke-dasharray", "4 4");
-      line.setAttribute("opacity", "0.55");
-      svg.appendChild(line);
+    geom.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geom.setAttribute("seed", new THREE.BufferAttribute(seed, 1));
+    const mat = new THREE.PointsMaterial({
+      color: 0x00eaff,
+      size: 0.025,
+      transparent: true,
+      opacity: 0.4,
+      sizeAttenuation: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
-    svg.classList.add("show");
+    this.particles = new THREE.Points(geom, mat);
+    this.scene.add(this.particles);
+    this.particleData = { N, t: 0, basePos: pos.slice() };
   },
 
-  explode() {
-    if (this.state === "exploded" || this.state === "reassembling") return;
-    if (this.parts.length === 0) { toast("Upload an image first."); return; }
-    Audio.explode();
-    this.buildCards();
-    // shrink original image
-    this.previewCard.style.transform = "translate(-50%, -50%) scale(0.36)";
-    this.previewCard.style.filter = "blur(2px) brightness(0.7) saturate(1.2)";
-    requestAnimationFrame(() => this.layoutCards());
-    // Particle burst at center
-    const r = this.stageWrap.getBoundingClientRect();
-    Particles.burst(r.width / 2, r.height / 2, 80);
-    this.state = "exploded";
+  resize() {
+    if (!this.renderer) return;
+    this.renderer.setSize(innerWidth, innerHeight, false);
+    this.camera.aspect = innerWidth / innerHeight;
+    this.camera.updateProjectionMatrix();
   },
 
-  assemble() {
-    if (this.state !== "exploded") return;
-    Audio.assemble();
-    this.state = "reassembling";
-    this.connectors.classList.remove("show");
-    this.cards.forEach((c, i) => {
-      setTimeout(() => {
-        c.style.transform = "translate(-50%, -50%) scale(0.4)";
-        c.classList.remove("in");
-      }, i * 18);
+  /* ---------- Loading an image as 3D model ---------- */
+  async load(imageDataUrl, parts) {
+    this.clear();
+    this.parts = parts || [];
+
+    // Load HTMLImageElement
+    const img = await loadHTMLImage(imageDataUrl);
+    this.fullImg = img;
+
+    const aspect = img.width / img.height;
+    // Fit a target box ~3 units; cap by aspect
+    const targetMax = 3.0;
+    const W = aspect >= 1 ? targetMax : targetMax * aspect;
+    const H = aspect >= 1 ? targetMax / aspect : targetMax;
+    this.imageDims = { W, H };
+
+    // Base plane (full image)
+    const fullCanvas = imageToCanvas(img, 1024);
+    const baseTex = new THREE.CanvasTexture(fullCanvas);
+    if (THREE.SRGBColorSpace) baseTex.colorSpace = THREE.SRGBColorSpace;
+    const baseGeom = new THREE.PlaneGeometry(W, H, 1, 1);
+    const baseMat = new THREE.MeshBasicMaterial({
+      map: baseTex, transparent: true, opacity: 1.0,
+      side: THREE.DoubleSide,
     });
-    setTimeout(() => {
-      this.partsLayer.innerHTML = "";
-      this.cards = [];
-      this.previewCard.style.transform = "translate(-50%, -50%)";
-      this.previewCard.style.filter = "";
-      this.state = "preview";
-      this.focusedIdx = -1;
-      this.updateFocusUI();
-    }, 700);
-  },
+    this.baseMesh = new THREE.Mesh(baseGeom, baseMat);
+    this.root.add(this.baseMesh);
 
-  toggleExplode() { if (this.state === "exploded") this.assemble(); else this.explode(); },
-
-  hover(idx) {
-    if (this.hoverIdx === idx) return;
-    this.hoverIdx = idx;
-    this.cards.forEach((c, i) => c.classList.toggle("hover", i === idx));
-    $$("#rp-list .rp-item").forEach((el, i) => el.classList.toggle("hover", i === idx));
-    if (idx >= 0) Audio.hover();
-  },
-
-  focus(idx, opts = {}) {
-    if (this.parts.length === 0) return;
-    if (idx < 0) idx = this.parts.length - 1;
-    if (idx >= this.parts.length) idx = 0;
-    this.focusedIdx = idx;
-    this.updateFocusUI();
-    Audio.click();
-    if (opts.inspect) Inspect.open(idx);
-  },
-
-  updateFocusUI() {
-    this.cards.forEach((c, i) => c.classList.toggle("focused", i === this.focusedIdx));
-    $$("#rp-list .rp-item").forEach((el, i) => el.classList.toggle("focused", i === this.focusedIdx));
-    if (this.focusedIdx >= 0 && this.cards[this.focusedIdx]) {
-      this.cards[this.focusedIdx].scrollIntoView({ behavior: "smooth", block: "nearest" });
-      const item = $$("#rp-list .rp-item")[this.focusedIdx];
-      if (item) item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Outline frame around base (subtle)
+    {
+      const edges = new THREE.EdgesGeometry(baseGeom);
+      const lineMat = new THREE.LineBasicMaterial({
+        color: 0x00eaff, transparent: true, opacity: 0.0
+      });
+      const frame = new THREE.LineSegments(edges, lineMat);
+      this.baseMesh.add(frame);
+      this.baseMesh.userData.frame = frame;
     }
-  },
 
-  cycle(dir) {
-    if (this.parts.length === 0) return;
-    if (this.state !== "exploded") this.explode();
-    const next = this.focusedIdx === -1 ? (dir > 0 ? 0 : this.parts.length - 1)
-                                        : (this.focusedIdx + dir + this.parts.length) % this.parts.length;
-    this.focus(next);
-  },
+    // Component planes
+    this.partMeshes = [];
+    for (let i = 0; i < this.parts.length; i++) {
+      const p = this.parts[i];
+      const partTex = makeCroppedTexture(img, p);
+      const sz = ({ small: 0.20, medium: 0.30, large: 0.45 })[p.size_hint] || 0.30;
+      const pW = W * sz;
+      const pH = H * sz;
+      const geom = new THREE.PlaneGeometry(pW, pH);
+      const mat = new THREE.MeshBasicMaterial({
+        map: partTex, transparent: true, opacity: 0.0,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geom, mat);
 
-  pause(p) { this.paused = p; this.stageWrap.style.filter = p ? "saturate(0.6) brightness(0.85)" : ""; },
+      // FLAT: component sits on top of base, at its hint position
+      const flatX = (p.position_hint.x - 0.5) * W;
+      const flatY = -(p.position_hint.y - 0.5) * H;
+      const flatPos = new THREE.Vector3(flatX, flatY, 0.001 + i * 0.0001);
 
-  reset() {
-    this.parts = [];
-    this.cards = [];
-    this.partsLayer.innerHTML = "";
-    this.connectors.innerHTML = "";
-    this.previewCard.classList.add("hidden");
-    this.previewCard.classList.remove("scanning");
-    this.previewCard.style.transform = "translate(-50%, -50%)";
-    this.previewCard.style.filter = "";
-    this.imgEl.src = "";
-    this.imageSrc = null;
-    this.state = "idle";
-    $("#dropzone").classList.add("show");
-    $("#right-panel").classList.add("hidden");
-    $("#cam-widget").classList.remove("has-right-panel");
-    $("#inspect-mask")?.classList.remove("show");
-    this.focusedIdx = -1; this.hoverIdx = -1;
-    if (typeof Gesture !== "undefined") Gesture.reset();
-  }
-};
+      // HOLO: same XY, raised in Z (parallax depth)
+      const holoZ = 0.15 + (i / Math.max(1, this.parts.length - 1)) * 0.7;
+      const holoPos = new THREE.Vector3(flatX, flatY, holoZ);
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
-}
-function categoryColor(cat) {
-  const map = {
-    part: "#00eaff", component: "#00eaff",
-    material: "#b6ff5d", surface: "#9d6cff",
-    element: "#ffb547", organ: "#ff5b7e",
-    feature: "#ff3df0",
-  };
-  return map[cat] || "#00eaff";
-}
+      // EXPLODED: radial in 3D
+      const angle = (i / this.parts.length) * Math.PI * 2 - Math.PI / 2;
+      const r = Math.max(W, H) * 1.05;
+      const expPos = new THREE.Vector3(
+        Math.cos(angle) * r,
+        Math.sin(angle) * r * 0.7,
+        0.5 + (i % 3) * 0.4
+      );
 
-/* ----------------------------- Image upload ----------------------------- */
-const Upload = {
-  init() {
-    const dz = $("#dropzone-inner");
-    const input = $("#file-input");
-    dz.addEventListener("click", () => input.click());
-    dz.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
-    input.addEventListener("change", (e) => {
-      const f = e.target.files?.[0]; if (f) this.handleFile(f);
-      input.value = "";
-    });
-    $("#btn-upload").addEventListener("click", () => input.click());
-
-    // global drag & drop
-    const stop = e => { e.preventDefault(); e.stopPropagation(); };
-    ["dragenter", "dragover"].forEach(ev => addEventListener(ev, e => {
-      stop(e);
-      const dz = $("#dropzone");
-      dz.classList.add("dragging");
-      dz.classList.add("show");
-    }));
-    ["dragleave", "drop"].forEach(ev => addEventListener(ev, e => {
-      stop(e);
-      $("#dropzone").classList.remove("dragging");
-    }));
-    addEventListener("drop", e => {
-      stop(e);
-      const f = e.dataTransfer?.files?.[0];
-      if (f && /^image\//.test(f.type)) this.handleFile(f);
-      else if (e.dataTransfer?.getData?.("text")) {
-        // could be a url — try fetching
-        const url = e.dataTransfer.getData("text");
-        if (/^https?:/.test(url)) toast("Drag remote URLs is not supported by browsers; download then drop.");
-      }
-    });
-
-    // paste
-    addEventListener("paste", e => {
-      const items = e.clipboardData?.items || [];
-      for (const it of items) {
-        if (it.type && it.type.startsWith("image/")) {
-          const f = it.getAsFile(); if (f) { this.handleFile(f); break; }
-        }
-      }
-    });
-  },
-
-  async handleFile(file) {
-    if (!/^image\//.test(file.type)) { toast("Please drop an image file.", "error"); return; }
-    if (file.size > 12 * 1024 * 1024) { toast("Image is large; resizing for analysis…"); }
-
-    const dataUrl = await this._toDataURL(file);
-    const small = await this._resizeForApi(dataUrl, 1280);
-    Stage.reset();
-    Stage.setImage(dataUrl);
-    await App.runAnalysis(small, file.name);
-  },
-
-  _toDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = () => reject(new Error("Failed to read file"));
-      r.readAsDataURL(file);
-    });
-  },
-
-  _resizeForApi(dataUrl, maxDim) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const m = Math.max(img.width, img.height);
-        if (m <= maxDim) { resolve(dataUrl); return; }
-        const scale = maxDim / m;
-        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-        const c = document.createElement("canvas");
-        c.width = w; c.height = h;
-        const ctx = c.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL("image/jpeg", 0.88));
+      mesh.position.copy(flatPos);
+      mesh.userData = {
+        index: i,
+        part: p,
+        flatPos, holoPos, expPos,
+        targetPos: flatPos.clone(),     // overridden if grabbed
+        userOffset: new THREE.Vector3(0, 0, 0), // accumulates user drag offset
+        labelEl: null,
+        outline: null,
       };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
+
+      // Outline edge for the part — visible in HOLO/EXPLODED
+      const outlineGeom = new THREE.EdgesGeometry(geom);
+      const outlineMat = new THREE.LineBasicMaterial({
+        color: parseColor(p.color_hint) || 0x00eaff,
+        transparent: true, opacity: 0.0
+      });
+      const outline = new THREE.LineSegments(outlineGeom, outlineMat);
+      mesh.add(outline);
+      mesh.userData.outline = outline;
+
+      this.root.add(mesh);
+      this.partMeshes.push(mesh);
+    }
+
+    // Build labels
+    Labels.build(this.parts);
+
+    // Initial state
+    this.state = "flat";
+    this.targetState = 0;
+    this.stateValue = 0;
+    this.root.rotation.set(0, 0, 0);
+    this.rotationVel = { x: 0, y: 0 };
+  },
+
+  clear() {
+    if (this.baseMesh) {
+      this.root.remove(this.baseMesh);
+      disposeMesh(this.baseMesh);
+      this.baseMesh = null;
+    }
+    for (const m of this.partMeshes) {
+      this.root.remove(m);
+      disposeMesh(m);
+    }
+    this.partMeshes = [];
+    this.parts = [];
+    Labels.clear();
+    this.state = "idle";
+    this.stateValue = 0; this.targetState = 0;
+  },
+
+  setStateTarget(s) {
+    s = clamp(s, 0, 2);
+    if (s === this.targetState) return;
+    this.targetState = s;
+    if (s === 1 && this.state === "flat") {
+      Audio.morph();
+      App.setStateUI("HOLOGRAM", "Hands open & move → rotate · Pinch a part → grab · Spread again → explode");
+      this.state = "holo";
+    } else if (s === 0 && (this.state === "holo" || this.state === "exploded")) {
+      Audio.unmorph();
+      App.setStateUI("FLAT", "Spread two hands → materialise into 3D");
+      this.state = "flat";
+    } else if (s === 2 && this.state !== "exploded") {
+      Audio.explode();
+      App.setStateUI("EXPLODED", "Pinch any part → drag · Pinch then release on a part → details · Close hands → reassemble");
+      this.state = "exploded";
+    }
+  },
+
+  cycleForward() {
+    if (this.targetState >= 2) return;
+    this.setStateTarget(this.targetState + 1);
+  },
+  cycleBackward() {
+    if (this.targetState <= 0) return;
+    this.setStateTarget(this.targetState - 1);
+  },
+
+  /* ---------- Per-frame update ---------- */
+  _loop() {
+    const tick = () => {
+      this._update();
+      this.renderer.render(this.scene, this.camera);
+      requestAnimationFrame(tick);
+    };
+    tick();
+  },
+
+  _update() {
+    const t = now() * 0.001;
+
+    // Smooth state value
+    this.stateValue = lerp(this.stateValue, this.targetState, 0.085);
+
+    // Smooth rotation
+    if (Math.abs(this.rotationVel.x) > 0.0001 || Math.abs(this.rotationVel.y) > 0.0001) {
+      this.root.rotation.y += this.rotationVel.y;
+      this.root.rotation.x += this.rotationVel.x;
+      this.rotationVel.x *= this.rotationDamping;
+      this.rotationVel.y *= this.rotationDamping;
+    }
+    // Idle wobble in HOLO state
+    if (this.state === "holo" && this.partMeshes.length && !Gesture.isInteracting()) {
+      this.root.rotation.y += Math.sin(t * 0.3) * 0.0008;
+    }
+    // Clamp pitch
+    this.root.rotation.x = clamp(this.root.rotation.x, -0.9, 0.9);
+
+    // Update meshes per state
+    if (this.partMeshes.length) {
+      const v = this.stateValue;
+      const baseOpacity = lerp(1, 0.08, clamp(v, 0, 1));
+      this.baseMesh.material.opacity = baseOpacity;
+      const frame = this.baseMesh.userData.frame;
+      if (frame) frame.material.opacity = lerp(0, 0.5, clamp(v, 0, 1));
+
+      this.partMeshes.forEach((m, i) => {
+        const u = m.userData;
+        let pos;
+        if (v <= 1) {
+          pos = lerpVec3(u.flatPos, u.holoPos, v);
+        } else {
+          pos = lerpVec3(u.holoPos, u.expPos, v - 1);
+        }
+        // Apply user-drag offset (only meaningful when grabbed/moved)
+        const finalPos = pos.clone().add(u.userOffset);
+        m.position.copy(finalPos);
+
+        // Subtle floating wobble per part
+        const wobble = Math.sin(t * 1.6 + i * 0.7) * 0.02 * clamp(v, 0, 1);
+        m.position.z += wobble;
+
+        // Opacity fades in as v leaves 0
+        m.material.opacity = clamp(v * 1.4, 0, 1);
+        if (u.outline) u.outline.material.opacity = clamp((v - 0.3) * 1.2, 0, 0.7);
+      });
+
+      // Hologram rings opacity follows state
+      if (this.hologramRing) {
+        this.hologramRing.material.opacity = lerp(0, 0.55, clamp(v, 0, 1));
+        if (this.hologramRing.userData.inner) {
+          this.hologramRing.userData.inner.material.opacity = lerp(0, 0.5, clamp(v - 0.4, 0, 1));
+        }
+        this.hologramRing.rotation.z = t * 0.15;
+        if (this.hologramRing.userData.inner) this.hologramRing.userData.inner.rotation.z = -t * 0.22;
+      }
+    }
+
+    // Particles drift
+    if (this.particles) {
+      const pos = this.particles.geometry.attributes.position;
+      const base = this.particleData.basePos;
+      for (let i = 0; i < this.particleData.N; i++) {
+        const off = i * 3;
+        pos.array[off]     = base[off]   + Math.sin(t * 0.5 + i) * 0.05;
+        pos.array[off + 1] = base[off+1] + Math.cos(t * 0.4 + i * 0.6) * 0.1;
+        pos.array[off + 2] = base[off+2] + Math.sin(t * 0.6 + i * 0.3) * 0.05;
+      }
+      pos.needsUpdate = true;
+      // Particles intensify when active
+      this.particles.material.opacity = lerp(0.18, 0.55, clamp(this.stateValue, 0, 1));
+    }
+
+    // Update DOM labels
+    Labels.update();
+  },
+
+  /* ---------- Hand-driven manipulation helpers ---------- */
+  rotateBy(dx, dy) {
+    // dx/dy in normalized screen units (-0.5..0.5 typically)
+    this.rotationVel.y = clamp(dx * 4, -0.06, 0.06);
+    this.rotationVel.x = clamp(-dy * 3, -0.05, 0.05);
+  },
+
+  // Raycast normalized x,y (0..1) screen coords to nearest part
+  pickPart(nx, ny, maxDist = 0.5) {
+    if (!this.partMeshes.length) return null;
+    this.ndc.set(nx * 2 - 1, -(ny * 2 - 1));
+    this.raycaster.setFromCamera(this.ndc, this.camera);
+    // Test against actual mesh hits first
+    const hits = this.raycaster.intersectObjects(this.partMeshes);
+    if (hits.length) return hits[0].object;
+    // Fallback: pick nearest mesh by screen distance
+    let best = null, bestD = Infinity;
+    const tmp = new THREE.Vector3();
+    for (const m of this.partMeshes) {
+      tmp.copy(m.position).applyMatrix4(this.root.matrixWorld);
+      tmp.project(this.camera);
+      const sx = tmp.x * 0.5 + 0.5;
+      const sy = -tmp.y * 0.5 + 0.5;
+      const d = (sx - nx) * (sx - nx) + (sy - ny) * (sy - ny);
+      if (d < bestD) { bestD = d; best = m; }
+    }
+    return Math.sqrt(bestD) < maxDist ? best : null;
+  },
+
+  // Convert screen (nx,ny) to a world point on the plane z=mesh.position.z (in root-local space).
+  screenToMeshPlane(nx, ny, mesh) {
+    this.ndc.set(nx * 2 - 1, -(ny * 2 - 1));
+    this.raycaster.setFromCamera(this.ndc, this.camera);
+    const ray = this.raycaster.ray.clone();
+    // Transform ray into root's local space (account for rotation)
+    const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert();
+    ray.applyMatrix4(inv);
+    const targetZ = mesh.userData.flatPos.z + mesh.userData.userOffset.z; // approximate plane z in local space
+    if (Math.abs(ray.direction.z) < 0.0001) return null;
+    const t = (targetZ - ray.origin.z) / ray.direction.z;
+    return ray.origin.clone().add(ray.direction.clone().multiplyScalar(t));
+  },
+
+  flashRing() {
+    if (!this.hologramRing) return;
+    this.hologramRing.material.opacity = 1;
+  }
+};
+
+/* ----------------------------- DOM Labels ----------------------------- */
+const Labels = {
+  container: null,
+  els: [],
+  build(parts) {
+    this.container = $("#labels");
+    this.clear();
+    parts.forEach((p, i) => {
+      const el = document.createElement("div");
+      el.className = "part-label";
+      el.style.color = p.color_hint || "#00eaff";
+      el.innerHTML = `<span class="swatch" style="background:${p.color_hint || '#00eaff'};color:${p.color_hint || '#00eaff'}"></span><span class="num">${String(i+1).padStart(2,'0')}</span>${escapeHtml(p.name)}`;
+      el.addEventListener("click", () => Detail.open(i));
+      el.addEventListener("mouseenter", () => Scene.partMeshes[i] && (Scene.partMeshes[i].userData.hover = true));
+      el.addEventListener("mouseleave", () => Scene.partMeshes[i] && (Scene.partMeshes[i].userData.hover = false));
+      this.container.appendChild(el);
+      this.els.push(el);
+      if (Scene.partMeshes[i]) Scene.partMeshes[i].userData.labelEl = el;
+    });
+  },
+  clear() {
+    if (!this.container) this.container = $("#labels");
+    this.container.innerHTML = "";
+    this.els = [];
+  },
+  update() {
+    if (!Scene.partMeshes.length) return;
+    const v = Scene.stateValue;
+    const visible = v > 0.25;
+    const focusedIdx = Detail.focusedIdx;
+    const tmp = new THREE.Vector3();
+    Scene.partMeshes.forEach((m, i) => {
+      const el = m.userData.labelEl; if (!el) return;
+      tmp.copy(m.position).applyMatrix4(Scene.root.matrixWorld);
+      tmp.project(Scene.camera);
+      const x = (tmp.x * 0.5 + 0.5) * innerWidth;
+      const y = (-tmp.y * 0.5 + 0.5) * innerHeight;
+      const inFront = tmp.z < 1 && tmp.z > -1;
+      el.style.transform = `translate(${x | 0}px, ${y | 0}px)`;
+      el.style.opacity = (visible && inFront) ? clamp((v - 0.25) * 1.5, 0, 1) : 0;
+      el.classList.toggle("focused", i === focusedIdx);
     });
   }
 };
 
-/* ----------------------------- Camera + MediaPipe ----------------------------- */
-const Cam = {
-  video: null, canvas: null, ctx: null,
-  hands: null, running: false, stream: null,
+/* ----------------------------- Detail card ----------------------------- */
+const Detail = {
+  focusedIdx: -1,
+  init() {
+    $("#detail-close").addEventListener("click", () => this.close());
+  },
+  open(idx) {
+    if (idx < 0 || idx >= Scene.parts.length) return;
+    const p = Scene.parts[idx];
+    this.focusedIdx = idx;
+    $("#d-num").textContent = `PART ${String(idx+1).padStart(2,'0')} / ${String(Scene.parts.length).padStart(2,'0')}`;
+    $("#d-name").textContent = p.name;
+    $("#d-badge").textContent = p.category;
+    $("#d-badge").style.color = p.color_hint || "#00eaff";
+    $("#d-badge").style.borderColor = p.color_hint || "#00eaff";
+    $("#d-desc").textContent = p.description || "—";
+    $("#detail").classList.add("show");
+    Audio.click();
+  },
+  close() {
+    this.focusedIdx = -1;
+    $("#detail").classList.remove("show");
+  },
+  cycle(dir) {
+    if (Scene.parts.length === 0) return;
+    let i = this.focusedIdx;
+    i = (i + dir + Scene.parts.length) % Scene.parts.length;
+    if (i === -1) i = 0;
+    this.open(i);
+  }
+};
+
+/* ----------------------------- Hand tracking ----------------------------- */
+const Hand = {
+  hands: null, video: null, canvas: null, ctx: null,
+  bgVideo: null,
+  running: false, stream: null,
   fpsEMA: 0, lastT: 0,
   lastResults: null,
 
   async start() {
-    if (this.running) return;
+    if (this.running) return true;
     setPill("cam-pill", "warn", "CAM");
-    this.video = $("#cam-video");
+
+    this.bgVideo = $("#bg-cam");
     this.canvas = $("#cam-canvas");
     this.ctx = this.canvas.getContext("2d");
+
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
@@ -1855,19 +1372,23 @@ const Cam = {
       });
     } catch (e) {
       setPill("cam-pill", "bad", "CAM");
-      toast("Camera blocked. Use keyboard / buttons instead.", "error");
-      throw e;
+      toast("Camera blocked. Allow it in your browser settings.", "error");
+      return false;
     }
-    this.video.srcObject = this.stream;
-    const arVideo = $("#ar-video");
-    if (arVideo) { try { arVideo.srcObject = this.stream; arVideo.play().catch(()=>{}); } catch {} }
-    await new Promise(r => { this.video.onloadedmetadata = () => { this.video.play(); r(); }; });
+
+    // Use the visible bg-cam <video> as the MediaPipe input source.
+    // It's already in the DOM, autoplaying, and fullscreen — perfect.
+    this.video = this.bgVideo;
+    this.bgVideo.srcObject = this.stream;
+    this.bgVideo.classList.add("dim");
+    await new Promise(r => { this.bgVideo.onloadedmetadata = () => { this.bgVideo.play(); r(); }; });
+
     this._setupCanvas();
 
     if (typeof Hands === "undefined") {
       setPill("cam-pill", "bad", "CAM");
-      toast("MediaPipe Hands failed to load. Check your network.", "error");
-      throw new Error("MediaPipe Hands not loaded");
+      toast("MediaPipe failed to load.", "error");
+      return false;
     }
     this.hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
@@ -1879,14 +1400,14 @@ const Cam = {
       minTrackingConfidence: 0.55,
       selfieMode: true,
     });
-    this.hands.onResults((res) => this._onResults(res));
+    this.hands.onResults(r => this._onResults(r));
 
     this.running = true;
-    $("#cam-widget").classList.remove("hidden");
-    $("#cam-status").textContent = "tracking";
-    setPill("cam-pill", "live", "CAM");
+    $("#cam-widget").classList.add("show");
+    setPill("cam-pill", "ok", "CAM");
     Gesture.reset();
     this._loop();
+    return true;
   },
 
   stop() {
@@ -1895,31 +1416,31 @@ const Cam = {
       this.stream.getTracks().forEach(t => t.stop());
       this.stream = null;
     }
-    if (this.video) this.video.srcObject = null;
-    const arVideo = $("#ar-video");
-    if (arVideo) arVideo.srcObject = null;
-    $("#cam-widget").classList.add("hidden");
+    if (this.bgVideo) {
+      this.bgVideo.srcObject = null;
+      this.bgVideo.classList.remove("dim");
+    }
+    $("#cam-widget").classList.remove("show");
     setPill("cam-pill", null, "CAM");
+    Gesture.hideReticles();
     if (this.hands?.close) try { this.hands.close(); } catch {}
     this.hands = null;
-    Gesture.reset();
-    Gesture.hideReticles();
   },
 
-  toggle() { if (this.running) this.stop(); else return this.start(); },
+  toggle() { return this.running ? (this.stop(), false) : this.start(); },
 
   _setupCanvas() {
-    const r = this.video.getBoundingClientRect();
+    const r = $("#cam-widget").getBoundingClientRect();
     const dpr = Math.min(2, devicePixelRatio || 1);
-    this.canvas.width = (r.width || 200) * dpr;
-    this.canvas.height = (r.height || 150) * dpr;
+    this.canvas.width = r.width * dpr;
+    this.canvas.height = r.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.cw = r.width || 200; this.ch = r.height || 150;
+    this.cw = r.width; this.ch = r.height;
   },
 
   async _loop() {
     if (!this.running) return;
-    if (this.video.readyState >= 2) {
+    if (this.video?.readyState >= 2) {
       try { await this.hands.send({ image: this.video }); } catch {}
     }
     requestAnimationFrame(() => this._loop());
@@ -1944,18 +1465,17 @@ const Cam = {
     ctx.clearRect(0, 0, this.cw, this.ch);
     if (!res.multiHandLandmarks) return;
     const W = this.cw, H = this.ch;
+    const links = [
+      [0,1],[1,2],[2,3],[3,4],
+      [0,5],[5,6],[6,7],[7,8],
+      [5,9],[9,10],[10,11],[11,12],
+      [9,13],[13,14],[14,15],[15,16],
+      [13,17],[17,18],[18,19],[19,20],
+      [0,17]
+    ];
     res.multiHandLandmarks.forEach((lm, hi) => {
-      // skeleton
-      const links = [
-        [0,1],[1,2],[2,3],[3,4],
-        [0,5],[5,6],[6,7],[7,8],
-        [5,9],[9,10],[10,11],[11,12],
-        [9,13],[13,14],[14,15],[15,16],
-        [13,17],[17,18],[18,19],[19,20],
-        [0,17]
-      ];
       ctx.lineWidth = 1.5;
-      ctx.strokeStyle = hi === 0 ? "rgba(0, 234, 255, 0.85)" : "rgba(255, 61, 240, 0.85)";
+      ctx.strokeStyle = hi === 0 ? "rgba(0,234,255,0.85)" : "rgba(255,61,240,0.85)";
       ctx.shadowBlur = 6; ctx.shadowColor = ctx.strokeStyle;
       ctx.beginPath();
       for (const [a, b] of links) {
@@ -1972,544 +1492,532 @@ const Cam = {
   }
 };
 
-/* ----------------------------- Gesture recognizer ----------------------------- */
-/* =========================================================
- * Gesture v2 — per-hand smoothed state machine
- * Detects per-hand: position (index tip + palm centroid), pinch (thumb-index),
- * openness, finger flags. Then computes:
- *   - Two-hand spread/close progress (live progress meter)
- *   - Spread cross-up trigger -> Dissect
- *   - Close cross-down trigger -> Assemble
- *   - Single-hand pinch-and-hold over a card -> Grab & drag
- *   - Index-point hover (cursor reticle on stage)
- *   - Open palm (5 fingers extended) -> Pause
- *   - Swipe with wrist velocity -> Cycle parts
- * ========================================================= */
+/* ----------------------------- Gesture engine ----------------------------- */
 const Gesture = {
   hands: [null, null],          // per-hand state
-  twoHandRatioEMA: null,         // smoothed normalized hand-pair distance
-  twoHandBaseline: null,         // baseline ratio set when both hands first detected
-  cooldownExplode: 0,
-  cooldownAssemble: 0,
-  swipeBuf: [],
-  lastSwipeT: 0,
+  twoHandRatioEMA: null,        // smoothed normalized hand-pair distance
+  twoHandBaseline: null,        // baseline for delta measurement
+  twoHandLastMid: null,         // for rotation tracking
+  cooldownAdvance: 0,
+  cooldownRetreat: 0,
   paused: false,
-  grab: null,                    // { handIdx, cardIdx, offX, offY }
-  pinchProgress: [0, 0],         // 0..1 per hand
-  current: "idle",
-  confidence: 0,
+  grabs: [null, null],          // active grab per hand: { meshIdx, startX, startY, startT, startPos }
   lastUiUpdate: 0,
 
   reset() {
     this.hands = [null, null];
     this.twoHandRatioEMA = null;
     this.twoHandBaseline = null;
-    this.swipeBuf = [];
-    this.cooldownExplode = 0; this.cooldownAssemble = 0;
-    this.grab = null;
-    this.pinchProgress = [0, 0];
+    this.twoHandLastMid = null;
+    this.cooldownAdvance = 0;
+    this.cooldownRetreat = 0;
+    this.grabs = [null, null];
   },
-
   hideReticles() {
-    $("#reticle-0")?.classList.remove("show", "pinching");
-    $("#reticle-1")?.classList.remove("show", "pinching");
-    $("#gesture-meter")?.classList.remove("show");
+    $("#ret-0").classList.remove("show", "pinch", "grabbing");
+    $("#ret-1").classList.remove("show", "pinch", "grabbing");
+    $("#meter").classList.remove("show");
+  },
+  isInteracting() {
+    return this.grabs[0] || this.grabs[1] || this.twoHandLastMid != null;
   },
 
   process(res) {
     const lms = res.multiHandLandmarks || [];
     const handed = res.multiHandedness || [];
     const t = now();
-    let g = "idle", conf = 0;
+    if (Scene.state === "idle") {
+      // Still draw reticles for fun
+      this._drawReticles(lms, handed);
+      $("#meter").classList.remove("show");
+      return;
+    }
 
-    // --- Build per-hand state ---
-    const r = $("#stage-wrap").getBoundingClientRect();
+    // Build per-hand state
     const states = [];
     for (let i = 0; i < lms.length && i < 2; i++) {
       const lm = lms[i];
       const isRight = (handed[i]?.label || "").toLowerCase() === "right";
       const fingers = fingerStates(lm, isRight);
       const palm = lm[9];
-      const indexTip = lm[8], thumbTip = lm[4];
+      const idx = lm[8], thumb = lm[4];
       const hSize = handSize(lm);
-      const pinchD = dist(thumbTip.x, thumbTip.y, indexTip.x, indexTip.y);
-      const pinchN = pinchD / Math.max(0.04, hSize);
-      // pinchN < 0.5 = pinching, 0.5–1.2 = open. Smooth and convert to 0..1 progress
-      const pinchProg = clamp(1 - (pinchN - 0.35) / 0.55, 0, 1);
-      const isPinching = pinchProg > 0.7;
-      const isPointing = fingers[1] && !fingers[2] && !fingers[3] && !fingers[4];
-      const isOpenPalm = fingers.filter(Boolean).length === 5;
+      const pinchDist = dist2(thumb.x, thumb.y, idx.x, idx.y);
+      const pinchN = pinchDist / Math.max(0.04, hSize);
+      const pinchProg = clamp(1 - (pinchN - 0.32) / 0.55, 0, 1);
+      const isPinch = pinchProg > 0.7;
+      const isPoint = fingers[1] && !fingers[2] && !fingers[3] && !fingers[4];
+      const isOpen = fingers.filter(Boolean).length >= 4;
 
-      // Cursor pos = midpoint of thumb+index (works for pinch and point)
-      const cursor = midpoint(thumbTip, indexTip);
-      // smooth
+      // Cursor = midpoint of thumb & index
+      const cursorX = (thumb.x + idx.x) / 2;
+      const cursorY = (thumb.y + idx.y) / 2;
+
       const prev = this.hands[i];
-      const sx = prev ? lerp(prev.cx, cursor.x, 0.45) : cursor.x;
-      const sy = prev ? lerp(prev.cy, cursor.y, 0.45) : cursor.y;
+      const sx = prev ? lerp(prev.cx, cursorX, 0.5) : cursorX;
+      const sy = prev ? lerp(prev.cy, cursorY, 0.5) : cursorY;
 
       states[i] = {
-        cx: sx, cy: sy,
-        px: sx * r.width, py: sy * r.height,
-        pinchN, pinchProg, isPinching,
-        isPointing, isOpenPalm,
+        idx: i, cx: sx, cy: sy,
+        pxScreen: sx * innerWidth, pyScreen: sy * innerHeight,
+        pinchN, pinchProg, isPinch,
+        isPoint, isOpen,
         hSize, palm,
       };
 
-      this.pinchProgress[i] = lerp(this.pinchProgress[i], pinchProg, 0.5);
       this._updateReticle(i, states[i]);
     }
     this.hands = states.concat([null, null]).slice(0, 2);
 
-    // hide unused reticles
+    // Hide unused reticles
     for (let i = lms.length; i < 2; i++) {
-      $("#reticle-" + i)?.classList.remove("show", "pinching");
+      $("#ret-" + i).classList.remove("show", "pinch", "grabbing");
     }
 
+    // No hands
     if (lms.length === 0) {
-      this._endGrab();
-      Stage.hover(-1);
-      this._setMeter(false);
-      this.twoHandBaseline = null; this.twoHandRatioEMA = null;
-      this.swipeBuf = [];
-      this._set("idle", 0);
+      this._releaseAllGrabs();
+      this.twoHandLastMid = null; this.twoHandBaseline = null; this.twoHandRatioEMA = null;
+      $("#meter").classList.remove("show");
+      App.setHint(this._defaultHint());
       return;
     }
 
-    // --- Open palm (any hand) => pause ---
-    const anyOpenPalm = states.some(s => s?.isOpenPalm);
-    if (anyOpenPalm) {
-      if (!this.paused) { this.paused = true; Stage.pause(true); }
-      g = "pause"; conf = 0.9;
-    } else if (this.paused) {
-      this.paused = false; Stage.pause(false);
-    }
+    // ---- One-hand pinch grab on a part ----
+    for (let i = 0; i < states.length; i++) {
+      const s = states[i]; if (!s) continue;
+      const grab = this.grabs[i];
 
-    // --- Single-hand pinch-grab on a part card ---
-    // Active grab takes precedence over everything
-    if (this.grab) {
-      const s = states[this.grab.handIdx];
-      if (s && s.isPinching) {
-        // continue dragging
-        const card = Stage.cards[this.grab.cardIdx];
-        if (card) {
-          const cx = r.width / 2, cy = r.height / 2;
-          const tx = (s.px - cx) + this.grab.offX;
-          const ty = (s.py - cy) + this.grab.offY;
-          card.dataset.tx = tx; card.dataset.ty = ty;
-          card.style.transform = `translate(-50%, -50%) translate3d(${tx}px, ${ty}px, 60px) rotate(0deg)`;
-          card.classList.add("focused");
-          this.grab.moved = Math.max(this.grab.moved,
-            Math.hypot(s.px - this.grab.startX, s.py - this.grab.startY));
+      if (grab) {
+        if (s.isPinch) {
+          // continue dragging
+          const mesh = Scene.partMeshes[grab.meshIdx]; if (!mesh) { this.grabs[i] = null; continue; }
+          const local = Scene.screenToMeshPlane(s.cx, s.cy, mesh);
+          if (local) {
+            mesh.userData.userOffset.copy(local).sub(getStateBasePos(mesh)).add(grab.localOffset);
+          }
+          $("#ret-" + i).classList.add("grabbing");
+          grab.moved = Math.max(grab.moved, dist2(s.cx, s.cy, grab.startX, grab.startY));
+        } else {
+          // released — tap detection
+          const tap = grab.moved < 0.018 && (t - grab.startT) < 900;
+          $("#ret-" + i).classList.remove("grabbing");
+          if (tap) Detail.open(grab.meshIdx);
+          this.grabs[i] = null;
         }
-        g = "grabbing"; conf = 0.95;
-        this._set(g, conf);
-        return;
-      } else {
-        // released — if barely moved, open inspect
-        const tap = (this.grab.moved < 28 && (t - this.grab.startT) < 1200);
-        const ci = this.grab.cardIdx;
-        this._endGrab();
-        Stage.drawConnectors();
-        if (tap) Inspect.open(ci);
-      }
-    }
-
-    // Try start grab if a hand is pinching near a card (only when exploded)
-    if (Stage.state === "exploded") {
-      for (let i = 0; i < states.length; i++) {
-        const s = states[i]; if (!s || !s.isPinching) continue;
-        const idx = this._nearestCard(s.px, s.py, 110);
-        if (idx >= 0) {
-          const card = Stage.cards[idx];
-          const cr = card.getBoundingClientRect();
-          const stageR = r;
-          const cardCx = cr.left + cr.width / 2 - stageR.left;
-          const cardCy = cr.top + cr.height / 2 - stageR.top;
-          this.grab = { handIdx: i, cardIdx: idx,
-            offX: cardCx - s.px, offY: cardCy - s.py,
-            startX: s.px, startY: s.py, startT: t, moved: 0 };
-          Stage.focus(idx);
-          card.style.transition = "transform 0.06s linear, border-color 0.2s ease, box-shadow 0.2s ease";
-          $("#connectors")?.classList.remove("show");
+      } else if (s.isPinch) {
+        // try to start a grab — pick part under hand
+        const mesh = Scene.pickPart(s.cx, s.cy, 0.18);
+        if (mesh) {
+          const local = Scene.screenToMeshPlane(s.cx, s.cy, mesh);
+          const basePos = getStateBasePos(mesh);
+          const localOffset = local
+            ? basePos.clone().add(mesh.userData.userOffset).sub(local)
+            : new THREE.Vector3();
+          this.grabs[i] = {
+            meshIdx: mesh.userData.index,
+            startX: s.cx, startY: s.cy, startT: t,
+            moved: 0,
+            localOffset,
+          };
           Audio.click();
-          g = "grab"; conf = 0.95;
-          this._set(g, conf);
-          return;
         }
-      }
-    } else if (states.some(s => s?.isPinching) && Stage.state === "preview") {
-      // Pinch in preview state -> trigger dissect (a crisp single-hand "summon" action)
-      if (t - this.cooldownExplode > 800) {
-        this.cooldownExplode = t;
-        Stage.explode();
-        Audio.explode();
-        g = "summon"; conf = 0.95;
-        this._set(g, conf);
-        return;
       }
     }
 
-    // --- Two-hand spread / close detection ---
-    if (states.length >= 2 && states[0] && states[1]) {
+    // ---- Two-hand: spread/close & rotation ----
+    if (states[0] && states[1] && !this.grabs[0] && !this.grabs[1]) {
       const a = states[0], b = states[1];
-      const d = dist(a.cx, a.cy, b.cx, b.cy);
+      const d = dist2(a.cx, a.cy, b.cx, b.cy);
       const avgHand = (a.hSize + b.hSize) / 2;
       const ratio = d / Math.max(0.05, avgHand);
-      this.twoHandRatioEMA = this.twoHandRatioEMA == null
-        ? ratio
-        : lerp(this.twoHandRatioEMA, ratio, 0.35);
+      this.twoHandRatioEMA = this.twoHandRatioEMA == null ? ratio : lerp(this.twoHandRatioEMA, ratio, 0.4);
       if (this.twoHandBaseline == null) this.twoHandBaseline = this.twoHandRatioEMA;
 
-      // Live progress against baseline
       const delta = this.twoHandRatioEMA - this.twoHandBaseline;
-      const SPREAD_TRIGGER = 1.4;   // additional ratio above baseline to fire
-      const CLOSE_TRIGGER  = -1.2;
-      const progress = clamp(delta / SPREAD_TRIGGER, -1, 1);
-      this._setMeter(true, progress, Stage.state === "exploded");
 
-      if (delta >= SPREAD_TRIGGER && t - this.cooldownExplode > 700 && Stage.state !== "exploded") {
-        this.cooldownExplode = t;
-        Stage.explode(); Audio.explode();
-        g = "dissect"; conf = 1.0;
-        this.twoHandBaseline = this.twoHandRatioEMA - 0.4;
-      } else if (delta <= CLOSE_TRIGGER && t - this.cooldownAssemble > 700 && Stage.state === "exploded") {
-        this.cooldownAssemble = t;
-        Stage.assemble(); Audio.assemble();
-        g = "assemble"; conf = 1.0;
-        this.twoHandBaseline = this.twoHandRatioEMA + 0.4;
-      } else if (delta > 0.3) g = "spreading", conf = clamp(delta / SPREAD_TRIGGER, 0.2, 0.9);
-      else if (delta < -0.3) g = "closing", conf = clamp(-delta / -CLOSE_TRIGGER, 0.2, 0.9);
-    } else {
-      this.twoHandBaseline = null; this.twoHandRatioEMA = null;
-      this._setMeter(false);
-    }
+      // Show meter
+      $("#meter").classList.add("show");
+      const SPREAD = 1.3;
+      const CLOSE = -1.1;
+      const mFill = $("#m-fill");
+      const mLabel = $("#m-label");
+      const mState = $("#m-state");
+      const fill = clamp(50 + (delta / SPREAD) * 50, 0, 100);
+      mFill.style.left = "0%";
+      mFill.style.width = fill + "%";
+      mState.textContent = ["FLAT", "HOLOGRAM", "EXPLODED"][Scene.targetState] || "—";
+      if (delta > 0.1) mLabel.textContent = "SPREAD →";
+      else if (delta < -0.1) mLabel.textContent = "← CLOSE";
+      else mLabel.textContent = "HOLD";
 
-    // --- Index point hover ---
-    const pointer = states.find(s => s?.isPointing);
-    if (pointer) {
-      const idx = this._nearestCard(pointer.px, pointer.py, 130);
-      if (idx >= 0) Stage.hover(idx);
-      else Stage.hover(-1);
-      if (g === "idle") { g = "point"; conf = 0.7; }
-    } else {
-      Stage.hover(-1);
-    }
+      // Trigger
+      if (delta >= SPREAD && t - this.cooldownAdvance > 700 && Scene.targetState < 2) {
+        Scene.cycleForward();
+        this.cooldownAdvance = t;
+        this.twoHandBaseline = this.twoHandRatioEMA - 0.3; // re-baseline
+      } else if (delta <= CLOSE && t - this.cooldownRetreat > 700 && Scene.targetState > 0) {
+        Scene.cycleBackward();
+        this.cooldownRetreat = t;
+        this.twoHandBaseline = this.twoHandRatioEMA + 0.3;
+      }
 
-    // --- Swipe (use first hand wrist) ---
-    if (states[0] && Stage.state === "exploded") {
-      const wrist = lms[0][0];
-      this.swipeBuf.push({ t, x: wrist.x });
-      while (this.swipeBuf.length && t - this.swipeBuf[0].t > 350) this.swipeBuf.shift();
-      if (this.swipeBuf.length >= 4 && t - this.lastSwipeT > 600) {
-        const dx = this.swipeBuf[this.swipeBuf.length - 1].x - this.swipeBuf[0].x;
-        const dt = this.swipeBuf[this.swipeBuf.length - 1].t - this.swipeBuf[0].t;
-        const v = dx / Math.max(1, dt) * 1000;
-        if (Math.abs(v) > 1.0 && Math.abs(dx) > 0.16) {
-          if (v > 0) Stage.cycle(1); else Stage.cycle(-1);
-          this.lastSwipeT = t; this.swipeBuf = [];
-          g = v > 0 ? "swipe right" : "swipe left"; conf = 0.85;
+      // Two-hand rotation: track midpoint
+      const midX = (a.cx + b.cx) / 2;
+      const midY = (a.cy + b.cy) / 2;
+      if (this.twoHandLastMid) {
+        const dx = midX - this.twoHandLastMid.x;
+        const dy = midY - this.twoHandLastMid.y;
+        // Only rotate if change is meaningful
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+          Scene.rotateBy(dx, dy);
         }
       }
-    } else {
-      this.swipeBuf = [];
-    }
+      this.twoHandLastMid = { x: midX, y: midY };
 
-    if (g === "idle") { g = "tracking"; conf = 0.35; }
-    this._set(g, conf);
+      App.setHint(`<b>Spread</b> hands → next state · <b>Pinch</b> a part → grab · <b>Move</b> hands → rotate`);
+    } else {
+      this.twoHandLastMid = null;
+      if (this.grabs[0] || this.grabs[1]) {
+        $("#meter").classList.remove("show");
+        App.setHint(`<b>Holding</b> a part — drag in space, release to drop · short pinch → details`);
+      } else {
+        $("#meter").classList.remove("show");
+        // Single-hand idle: open palm rotates by drift
+        const open = states.find(s => s?.isOpen);
+        if (open && Scene.state !== "flat") {
+          // Rotate slowly with hand position
+          const dx = (open.cx - 0.5) * 0.005;
+          Scene.rotateBy(dx, 0);
+        }
+        App.setHint(this._defaultHint());
+      }
+    }
   },
 
-  _endGrab() {
-    if (this.grab) {
-      const card = Stage.cards[this.grab.cardIdx];
-      if (card) card.style.transition = "";
-      this.grab = null;
+  _drawReticles(lms, handed) {
+    for (let i = 0; i < 2; i++) {
+      const ret = $("#ret-" + i);
+      if (!ret) continue;
+      if (i >= lms.length) {
+        ret.classList.remove("show", "pinch", "grabbing");
+        continue;
+      }
+      const lm = lms[i];
+      const isRight = (handed[i]?.label || "").toLowerCase() === "right";
+      const fingers = fingerStates(lm, isRight);
+      const idx = lm[8], thumb = lm[4];
+      const hSize = handSize(lm);
+      const pinchN = dist2(thumb.x, thumb.y, idx.x, idx.y) / Math.max(0.04, hSize);
+      const pinchProg = clamp(1 - (pinchN - 0.32) / 0.55, 0, 1);
+      const cx = ((thumb.x + idx.x) / 2) * innerWidth;
+      const cy = ((thumb.y + idx.y) / 2) * innerHeight;
+      ret.classList.add("show");
+      ret.classList.toggle("pinch", pinchProg > 0.7);
+      ret.style.transform = `translate(${cx | 0}px, ${cy | 0}px)`;
+      const arc = ret.querySelector(".arc");
+      if (arc) arc.style.transform = `rotate(${(pinchProg * 360) | 0}deg)`;
     }
   },
 
   _updateReticle(i, s) {
-    const ret = $("#reticle-" + i);
-    if (!ret) return;
+    const ret = $("#ret-" + i); if (!ret) return;
     ret.classList.add("show");
-    ret.classList.toggle("pinching", s.isPinching);
-    const r = $("#stage-wrap").getBoundingClientRect();
-    ret.style.transform = `translate(${s.px}px, ${s.py}px)`;
+    ret.classList.toggle("pinch", s.isPinch);
+    ret.style.transform = `translate(${s.pxScreen | 0}px, ${s.pyScreen | 0}px)`;
     const arc = ret.querySelector(".arc");
     if (arc) arc.style.transform = `rotate(${(s.pinchProg * 360) | 0}deg)`;
-    const lbl = ret.querySelector(".label");
-    if (lbl) {
-      if (s.isPinching) lbl.textContent = "PINCH";
-      else if (s.isPointing) lbl.textContent = "POINT";
-      else if (s.isOpenPalm) lbl.textContent = "PAUSE";
-      else lbl.textContent = i === 0 ? "HAND A" : "HAND B";
+  },
+
+  _releaseAllGrabs() {
+    for (let i = 0; i < 2; i++) {
+      if (this.grabs[i]) {
+        const ret = $("#ret-" + i);
+        if (ret) ret.classList.remove("grabbing");
+        this.grabs[i] = null;
+      }
     }
   },
 
-  _setMeter(show, prog = 0, isExploded = false) {
-    const m = $("#gesture-meter"); if (!m) return;
-    m.classList.toggle("show", show);
-    if (!show) return;
-    const bar = $("#gm-bar");
-    const labelEl = $("#gm-label");
-    const actionEl = $("#gm-action");
-    // map progress (-1..1) to bar fill 50% center → 100% spread / 0% close
-    const fill = clamp(50 + prog * 50, 0, 100);
-    bar.style.width = fill + "%";
-    if (prog > 0.05) { labelEl.textContent = "SPREAD"; actionEl.textContent = isExploded ? "—" : "DISSECT"; }
-    else if (prog < -0.05) { labelEl.textContent = "CLOSE"; actionEl.textContent = isExploded ? "ASSEMBLE" : "—"; }
-    else { labelEl.textContent = "HOLD"; actionEl.textContent = "READY"; }
-  },
-
-  _nearestCard(px, py, maxDist) {
-    if (Stage.cards.length === 0) return -1;
-    const r = $("#stage-wrap").getBoundingClientRect();
-    let best = -1, bestD = Infinity;
-    Stage.cards.forEach((c, i) => {
-      const cr = c.getBoundingClientRect();
-      const cx = cr.left + cr.width / 2 - r.left;
-      const cy = cr.top + cr.height / 2 - r.top;
-      const d = (px - cx) * (px - cx) + (py - cy) * (py - cy);
-      if (d < bestD) { bestD = d; best = i; }
-    });
-    return Math.sqrt(bestD) < maxDist ? best : -1;
-  },
-
-  _set(g, conf) {
-    this.current = g;
-    this.confidence = lerp(this.confidence, conf, 0.4);
-    const t = now();
-    if (t - this.lastUiUpdate < 60) return;
-    this.lastUiUpdate = t;
-    const label = $("#gesture-now");
-    if (label) label.textContent = g.toUpperCase();
-    const cb = $("#conf-bar");
-    if (cb) cb.style.width = (this.confidence * 100).toFixed(1) + "%";
-    $$("#gg-list .gg-item").forEach(el => el.classList.remove("active"));
-    const guideKey = ({
-      "dissect": "explode", "spreading": "explode", "summon": "explode",
-      "assemble": "assemble", "closing": "assemble",
-      "pause": "palm",
-      "point": "point",
-      "swipe right": "swipe", "swipe left": "swipe",
-      "grab": "point", "grabbing": "point",
-    })[g];
-    if (guideKey) {
-      const item = $(`#gg-list .gg-item[data-g='${guideKey}']`);
-      if (item) item.classList.add("active");
-    }
+  _defaultHint() {
+    if (Scene.state === "flat") return "<b>Spread</b> two hands wide → materialise hologram";
+    if (Scene.state === "holo") return "<b>Move</b> hands → rotate · <b>Spread</b> wider → explode · <b>Close</b> → flat";
+    if (Scene.state === "exploded") return "<b>Pinch</b> a part → grab · <b>Pinch then release</b> → details · <b>Close</b> → reassemble";
+    return "Drop or scan an image to begin";
   }
 };
 
+function getStateBasePos(mesh) {
+  const u = mesh.userData;
+  const v = Scene.stateValue;
+  if (v <= 1) return lerpVec3(u.flatPos, u.holoPos, v);
+  return lerpVec3(u.holoPos, u.expPos, v - 1);
+}
+
+/* ----------------------------- Image utils ----------------------------- */
+function loadHTMLImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error("Image load failed"));
+    img.src = src;
+  });
+}
+function imageToCanvas(img, maxDim) {
+  const m = Math.max(img.width, img.height);
+  const s = m > maxDim ? maxDim / m : 1;
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.width * s);
+  c.height = Math.round(img.height * s);
+  c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+function makeCroppedTexture(img, p) {
+  const sz = ({ small: 0.18, medium: 0.28, large: 0.42 })[p.size_hint] || 0.28;
+  const cropW = Math.max(32, img.width * sz);
+  const cropH = Math.max(32, img.height * sz);
+  const cx = clamp(p.position_hint.x * img.width - cropW / 2, 0, img.width - cropW);
+  const cy = clamp(p.position_hint.y * img.height - cropH / 2, 0, img.height - cropH);
+  const c = document.createElement("canvas");
+  c.width = Math.round(cropW); c.height = Math.round(cropH);
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, cx, cy, cropW, cropH, 0, 0, c.width, c.height);
+  // Optional: outline glow
+  ctx.strokeStyle = p.color_hint || "#00eaff";
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = p.color_hint || "#00eaff";
+  ctx.strokeRect(1, 1, c.width - 2, c.height - 2);
+  const tex = new THREE.CanvasTexture(c);
+  if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+function disposeMesh(m) {
+  if (m.geometry) m.geometry.dispose?.();
+  if (m.material) {
+    if (m.material.map) m.material.map.dispose?.();
+    m.material.dispose?.();
+  }
+  m.children?.forEach(disposeMesh);
+}
+function lerpVec3(a, b, t) {
+  return new THREE.Vector3(
+    a.x + (b.x - a.x) * t,
+    a.y + (b.y - a.y) * t,
+    a.z + (b.z - a.z) * t
+  );
+}
+function parseColor(hex) {
+  if (!hex) return null;
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  return parseInt(m[1], 16);
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ----------------------------- Hand math helpers ----------------------------- */
 function midpoint(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
-function handSize(lm) { return dist(lm[0].x, lm[0].y, lm[9].x, lm[9].y) || 0.1; }
+function handSize(lm) { return dist2(lm[0].x, lm[0].y, lm[9].x, lm[9].y) || 0.1; }
 function fingerStates(lm, isRight) {
-  // Returns [thumb, index, middle, ring, pinky] booleans (true = extended)
-  // For thumb, x-axis test (depends on handedness). For others, y-axis tip vs pip.
   const out = [];
-  // thumb: tip 4 vs ip 3, mcp 2
+  // thumb
   if (isRight) out.push(lm[4].x < lm[3].x);
   else out.push(lm[4].x > lm[3].x);
-  // index 8 vs 6
   out.push(lm[8].y < lm[6].y);
-  // middle 12 vs 10
   out.push(lm[12].y < lm[10].y);
-  // ring 16 vs 14
   out.push(lm[16].y < lm[14].y);
-  // pinky 20 vs 18
   out.push(lm[20].y < lm[18].y);
   return out;
 }
 
-/* ----------------------------- Inspect modal ----------------------------- */
-const Inspect = {
+/* ----------------------------- Upload + Scan ----------------------------- */
+const Upload = {
   init() {
-    $("#ins-close").addEventListener("click", () => this.close());
-    $("#inspect-mask").addEventListener("click", (e) => { if (e.target.id === "inspect-mask") this.close(); });
+    $("#file").addEventListener("change", async (e) => {
+      const f = e.target.files?.[0]; e.target.value = "";
+      if (f) await this.handleFile(f);
+    });
+
+    $("#btn-upload").addEventListener("click", () => $("#file").click());
+    $("#welcome-upload").addEventListener("click", () => $("#file").click());
+    $("#btn-scan").addEventListener("click", () => ScanLive.run());
+    $("#welcome-scan").addEventListener("click", () => ScanLive.run());
+
+    // Drag & drop
+    const stop = e => { e.preventDefault(); e.stopPropagation(); };
+    ["dragenter", "dragover"].forEach(ev => addEventListener(ev, e => {
+      stop(e);
+      $("#drag-overlay").classList.add("show");
+    }));
+    ["dragleave", "drop"].forEach(ev => addEventListener(ev, e => {
+      stop(e);
+      $("#drag-overlay").classList.remove("show");
+    }));
+    addEventListener("drop", async e => {
+      stop(e);
+      const f = e.dataTransfer?.files?.[0];
+      if (f && /^image\//.test(f.type)) await this.handleFile(f);
+    });
+
+    // Paste
+    addEventListener("paste", async e => {
+      const items = e.clipboardData?.items || [];
+      for (const it of items) {
+        if (it.type?.startsWith("image/")) {
+          const f = it.getAsFile();
+          if (f) { await this.handleFile(f); break; }
+        }
+      }
+    });
   },
-  open(idx) {
-    const p = Stage.parts[idx]; if (!p) return;
-    $("#ins-num").textContent = `PART ${String(idx + 1).padStart(2, "0")} / ${String(Stage.parts.length).padStart(2, "0")}`;
-    $("#ins-title").textContent = p.name;
-    $("#ins-cat").textContent = p.category;
-    $("#ins-cat").style.color = p.color_hint || categoryColor(p.category);
-    $("#ins-cat").style.borderColor = p.color_hint || categoryColor(p.category);
-    $("#ins-desc").textContent = p.description || "—";
-    $("#ins-color").textContent = p.color_hint || "—";
-    $("#ins-size").textContent = p.size_hint || "medium";
-    $("#ins-pos").textContent = `${(p.position_hint.x * 100).toFixed(0)},${(p.position_hint.y * 100).toFixed(0)}`;
-    // Crop the original image around position_hint
-    const crop = $("#ins-crop");
-    crop.style.backgroundImage = Stage.imageSrc ? `url("${Stage.imageSrc}")` : "";
-    const sz = ({ small: 22, medium: 32, large: 48 })[p.size_hint] || 32;
-    crop.style.backgroundPosition = `${(p.position_hint.x * 100).toFixed(1)}% ${(p.position_hint.y * 100).toFixed(1)}%`;
-    crop.style.backgroundSize = `${(100 / sz * 100).toFixed(0)}%`;
-    $("#inspect-mask").classList.add("show");
-    Audio.click();
-  },
-  close() { $("#inspect-mask").classList.remove("show"); }
+
+  async handleFile(f) {
+    if (!/^image\//.test(f.type)) { toast("Please drop an image.", "error"); return; }
+    const dataUrl = await fileToDataURL(f);
+    const small = await resizeForApi(dataUrl, 1280);
+    await App.run(dataUrl, small, f.name);
+  }
 };
 
-/* ----------------------------- ScanLive (object in hand) ----------------------------- */
 const ScanLive = {
   active: false,
   async run() {
     if (this.active) return;
-    if (!Cam.running) {
-      try { await Cam.start(); } catch { return; }
+    if (!Hand.running) {
+      const ok = await Hand.start();
+      if (!ok) return;
     }
-    if (!Settings.data.apiKey) { UI.openSettings(); toast("Add your API key first.", "error"); return; }
+    if (!Settings.data.apiKey) { App.openSettings(); toast("Add your API key first.", "error"); return; }
     this.active = true;
-    document.body.classList.add("ar");                  // turn on AR background to give feedback
-    const overlay = $("#scan-overlay");
+    const overlay = $("#countdown");
     overlay.classList.add("show");
     let cancelled = false;
-    const cancel = () => { cancelled = true; };
-    $("#scan-cancel").onclick = cancel;
+    const onCancel = () => { cancelled = true; };
+    $("#count-cancel").addEventListener("click", onCancel, { once: true });
     for (let n = 3; n >= 1; n--) {
-      $("#scan-count").textContent = n;
-      Audio.blip(420 + n * 80, 0.08, "square", 0.04);
+      const num = $("#count-num");
+      num.textContent = n;
+      num.style.animation = "none"; void num.offsetWidth;
+      num.style.animation = "countPop 1s ease";
+      Audio.beep(360 + n * 100, 0.08, "square", 0.04);
       await wait(800);
       if (cancelled) break;
     }
     overlay.classList.remove("show");
     if (cancelled) { this.active = false; return; }
-    // capture frame
-    const v = Cam.video;
+    // Capture
+    const v = Hand.video;
     const c = document.createElement("canvas");
     c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
     const ctx = c.getContext("2d");
-    // mirror to match user's view
     ctx.translate(c.width, 0); ctx.scale(-1, 1);
     ctx.drawImage(v, 0, 0, c.width, c.height);
     const dataUrl = c.toDataURL("image/jpeg", 0.9);
-    Audio.blip(900, 0.12, "sine", 0.05);
-    Stage.reset();
-    Stage.setImage(dataUrl);
+    Audio.beep(900, 0.14, "sine", 0.05);
     this.active = false;
-    await App.runAnalysis(dataUrl, "Scanned " + new Date().toLocaleTimeString());
+    await App.run(dataUrl, dataUrl, "Scanned " + new Date().toLocaleTimeString());
   }
 };
+
+function fileToDataURL(f) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = () => rej(new Error("read failed"));
+    r.readAsDataURL(f);
+  });
+}
+function resizeForApi(dataUrl, maxDim) {
+  return new Promise((res) => {
+    const img = new Image();
+    img.onload = () => {
+      const m = Math.max(img.width, img.height);
+      if (m <= maxDim) { res(dataUrl); return; }
+      const s = maxDim / m;
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * s);
+      c.height = Math.round(img.height * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = () => res(dataUrl);
+    img.src = dataUrl;
+  });
+}
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-/* ----------------------------- Stage parallax (camera-relative tilt) ----------------------------- */
-const Parallax = {
-  rx: 0, ry: 0, tRx: 0, tRy: 0,
+/* ----------------------------- App ----------------------------- */
+const App = {
   init() {
-    addEventListener("mousemove", (e) => {
-      const w = innerWidth, h = innerHeight;
-      this.tRy = ((e.clientX / w) - 0.5) * 8;
-      this.tRx = -((e.clientY / h) - 0.5) * 6;
-    }, { passive: true });
-    const tick = () => {
-      this.rx = lerp(this.rx, this.tRx, 0.08);
-      this.ry = lerp(this.ry, this.tRy, 0.08);
-      const stage = $("#stage");
-      if (stage) stage.style.transform = `rotateX(${this.rx.toFixed(2)}deg) rotateY(${this.ry.toFixed(2)}deg)`;
-      requestAnimationFrame(tick);
-    };
-    tick();
-  },
-  // Driven by hand position when tracking is on
-  setHand(nx, ny) {
-    this.tRy = ((nx) - 0.5) * 12;
-    this.tRx = -((ny) - 0.5) * 8;
-  }
-};
+    Settings.load();
+    Scene.init();
+    Detail.init();
+    Upload.init();
 
-/* ----------------------------- Touch / Mouse pinch ----------------------------- */
-const TouchPinch = {
-  base: 0, last: 0,
-  init() {
-    const stage = $("#stage-wrap");
-    stage.addEventListener("touchstart", (e) => {
-      if (e.touches.length === 2) this.base = this._dist(e), this.last = this.base;
-    }, { passive: true });
-    stage.addEventListener("touchmove", (e) => {
-      if (e.touches.length === 2) {
-        const d = this._dist(e);
-        const ratio = d / Math.max(1, this.base);
-        if (ratio > 1.4 && Stage.state !== "exploded") Stage.explode();
-        if (ratio < 0.7 && Stage.state === "exploded") Stage.assemble();
-        this.last = d;
-      }
-    }, { passive: true });
-  },
-  _dist(e) {
-    const a = e.touches[0], b = e.touches[1];
-    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  }
-};
+    // Pills
+    setPill("api-pill", Settings.data.apiKey ? "ok" : "warn", "API");
+    setPill("cam-pill", null, "CAM");
 
-/* ----------------------------- Modals & UI wiring ----------------------------- */
-const UI = {
-  init() {
     // Settings modal
     $("#btn-settings").addEventListener("click", () => this.openSettings());
-    $("#settings-mask").addEventListener("click", (e) => { if (e.target.id === "settings-mask") this.closeSettings(); });
+    $("#settings-mask").addEventListener("click", e => { if (e.target.id === "settings-mask") this.closeSettings(); });
     $("#settings-save").addEventListener("click", () => this.saveSettings());
     $("#settings-clear").addEventListener("click", () => {
-      if (confirm("Clear stored API key and model override?")) {
-        Settings.data.apiKey = "";
-        Settings.data.model = "";
-        Settings.save();
-        $("#api-key").value = "";
-        $("#api-model").value = "";
-        setPill("api-pill", null, "API");
-        toast("Cleared.");
-      }
+      if (!confirm("Clear stored API key and model?")) return;
+      Settings.data.apiKey = ""; Settings.data.model = ""; Settings.save();
+      $("#api-key").value = ""; $("#api-model").value = "";
+      setPill("api-pill", "warn", "API");
+      toast("Cleared.");
     });
-
-    const switches = [
-      ["#sw-sound", "sound"], ["#sw-particles", "particles"], ["#sw-mirror", "mirror"]
-    ];
-    switches.forEach(([sel, k]) => {
-      const el = $(sel);
-      const apply = () => {
-        el.classList.toggle("on", !!Settings.data[k]);
-        el.setAttribute("aria-checked", !!Settings.data[k]);
-        if (k === "mirror") {
-          const v = $("#cam-video"), c = $("#cam-canvas");
-          [v, c].forEach(n => { if (n) n.style.transform = Settings.data.mirror ? "scaleX(-1)" : "none"; });
-        }
-      };
-      el.addEventListener("click", () => { Settings.data[k] = !Settings.data[k]; Settings.save(); apply(); });
-      el.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); el.click(); } });
-      apply();
-    });
-
-    // History
-    $("#btn-history").addEventListener("click", () => this.openHistory());
-    $("#history-mask").addEventListener("click", (e) => { if (e.target.id === "history-mask") this.closeHistory(); });
-    $("#history-close").addEventListener("click", () => this.closeHistory());
-    $("#history-clear").addEventListener("click", () => { History.clear(); this.renderHistory(); toast("History cleared."); });
-
-    // Top buttons
-    $("#btn-camera").addEventListener("click", async () => { try { await Cam.toggle(); } catch {} });
-    $("#btn-explode").addEventListener("click", () => Stage.toggleExplode());
-    $("#btn-assemble").addEventListener("click", () => Stage.assemble());
-    $("#btn-share").addEventListener("click", () => App.shareSnapshot());
-    $("#btn-guide").addEventListener("click", () => $("#gesture-guide").classList.toggle("hidden"));
-    $("#gg-close").addEventListener("click", () => $("#gesture-guide").classList.add("hidden"));
-    $("#btn-scan").addEventListener("click", () => ScanLive.run());
-    $("#btn-ar").addEventListener("click", async () => {
-      const on = !document.body.classList.contains("ar");
-      if (on && !Cam.running) { try { await Cam.start(); } catch { return; } }
-      document.body.classList.toggle("ar", on);
-      $("#btn-ar").classList.toggle("btn-pri", on);
-      toast(on ? "AR mode on — your camera is the backdrop." : "AR off.");
-    });
+    $("#btn-cam").addEventListener("click", async () => { await Hand.toggle(); });
 
     // Keyboard
     addEventListener("keydown", (e) => {
-      if (e.target.matches("input, textarea")) return;
-      if (e.code === "Space") { e.preventDefault(); Stage.toggleExplode(); }
-      else if (e.code === "ArrowRight") { e.preventDefault(); Stage.cycle(1); }
-      else if (e.code === "ArrowLeft") { e.preventDefault(); Stage.cycle(-1); }
-      else if (e.code === "Enter") { e.preventDefault(); if (Stage.focusedIdx >= 0) Inspect.open(Stage.focusedIdx); }
+      if (e.target.matches?.("input, textarea")) return;
+      const k = e.key.toLowerCase();
+      if (e.code === "Space") { e.preventDefault(); this.cycleNext(); }
+      else if (k === "u") { $("#file").click(); }
+      else if (k === "l") { ScanLive.run(); }
+      else if (k === "c") { Hand.toggle(); }
+      else if (k === "s") { this.openSettings(); }
+      else if (e.code === "ArrowRight") { Detail.cycle(1); }
+      else if (e.code === "ArrowLeft") { Detail.cycle(-1); }
+      else if (e.code === "Enter") {
+        if (Detail.focusedIdx >= 0) {} // already open
+        else if (Scene.parts.length) Detail.open(0);
+      }
       else if (e.code === "Escape") {
-        if ($("#inspect-mask").classList.contains("show")) Inspect.close();
-        else Stage.assemble();
+        if ($("#detail").classList.contains("show")) Detail.close();
+        else if ($("#settings-mask").classList.contains("show")) this.closeSettings();
+        else Scene.cycleBackward();
       }
     });
+
+    // First-run nudge
+    if (!Settings.data.apiKey) {
+      setTimeout(() => toast("Add your Anthropic API key in Settings (top-right ⚙)."), 800);
+    }
+  },
+
+  cycleNext() {
+    if (Scene.parts.length === 0) return;
+    if (Scene.targetState >= 2) Scene.cycleBackward();
+    else Scene.cycleForward();
+  },
+
+  setStateUI(name, hint) {
+    $("#state-name").textContent = name;
+    if (hint) this.setHint(hint);
+  },
+  setHint(html) {
+    const el = $("#hint");
+    if (el && el._lastHint !== html) {
+      el.innerHTML = html;
+      el._lastHint = html;
+    }
   },
 
   openSettings() {
@@ -2523,239 +2031,38 @@ const UI = {
     Settings.data.apiKey = $("#api-key").value.trim();
     Settings.data.model = $("#api-model").value.trim();
     Settings.save();
-    setPill("api-pill", Settings.data.apiKey ? "live" : null, "API");
+    setPill("api-pill", Settings.data.apiKey ? "ok" : "warn", "API");
     this.closeSettings();
-    toast(Settings.data.apiKey ? "Saved. Ready to dissect." : "Saved (no API key set).", "success");
+    toast(Settings.data.apiKey ? "Saved." : "Saved (no key).", "ok");
   },
 
-  openHistory() { this.renderHistory(); $("#history-mask").classList.add("show"); },
-  closeHistory() { $("#history-mask").classList.remove("show"); },
-  renderHistory() {
-    const list = $("#history-list");
-    list.innerHTML = "";
-    if (History.list.length === 0) {
-      list.innerHTML = `<div class="empty">No dissections yet.</div>`;
-      return;
-    }
-    History.list.forEach((h, i) => {
-      const el = document.createElement("div");
-      el.className = "history-item";
-      el.innerHTML = `
-        <div class="thumb" style="background-image:url('${h.thumb}')"></div>
-        <div class="meta">
-          <b>${escapeHtml(h.name || "Image " + (i + 1))}</b>
-          <span>${escapeHtml(h.summary || `${h.parts?.length || 0} parts identified`)}</span>
-          <span class="tag">${new Date(h.t || Date.now()).toLocaleString()}</span>
-        </div>
-      `;
-      el.addEventListener("click", () => {
-        Stage.reset();
-        Stage.setImage(h.image);
-        Stage.setParts(h.parts || []);
-        this.closeHistory();
-        toast("Reloaded from history.");
-      });
-      list.appendChild(el);
-    });
-  }
-};
+  async run(fullDataUrl, smallDataUrl, name) {
+    if (!Settings.data.apiKey) { this.openSettings(); toast("Add your API key first.", "error"); return; }
+    // Auto-start camera so the AR backdrop is alive
+    if (!Hand.running) await Hand.start();
 
-/* ----------------------------- App orchestrator ----------------------------- */
-const App = {
-  init() {
-    Settings.load();
-    History.load();
-    Stage.init();
-    Particles.init();
-    Upload.init();
-    UI.init();
-    TouchPinch.init();
-    Inspect.init();
-    Parallax.init();
-
-    // Initial pill states
-    setPill("api-pill", Settings.data.apiKey ? "live" : "warn", "API");
-    setPill("cam-pill", null, "CAM");
-
-    if (!Settings.data.apiKey) {
-      // Friendly prompt
-      setTimeout(() => {
-        toast("Add your Anthropic API key in Settings to enable analysis.");
-      }, 600);
-    }
-  },
-
-  async runAnalysis(dataUrl, name) {
-    if (!Settings.data.apiKey) {
-      UI.openSettings();
-      Stage.endAnalyzing();
-      toast("API key required to analyze.", "error");
-      return;
-    }
-    Stage.startAnalyzing();
+    $("#welcome").classList.add("gone");
+    $("#analyzing").classList.add("show");
     setPill("api-pill", "warn", "API");
+    this.setStateUI("ANALYZING", "Identifying components…");
+
     try {
-      const result = await Claude.analyzeImage(dataUrl);
-      Stage.setParts(result.parts);
-      const thumb = await this._thumbnail(dataUrl, 96);
-      History.add({
-        t: Date.now(),
-        name: name || "Untitled",
-        summary: result.summary,
-        parts: result.parts,
-        image: dataUrl,
-        thumb,
-      });
-      Stage.endAnalyzing();
-      setPill("api-pill", "live", "API");
-      $("#gesture-guide").classList.remove("hidden");
-      const r = $("#stage-wrap").getBoundingClientRect();
-      Particles.burst(r.width / 2, r.height / 2, 30, ["#00eaff", "#9d6cff"]);
-      toast(`Found ${result.parts.length} components. Pinch out (or Space) to dissect.`, "success");
+      const result = await Claude.analyze(smallDataUrl);
+      $("#analyzing").classList.remove("show");
+      setPill("api-pill", "ok", "API");
+      // Build scene with full-resolution image
+      await Scene.load(fullDataUrl, result.parts);
+      this.setStateUI("FLAT", "Spread two hands → materialise hologram · Press Space to advance");
+      toast(`Found ${result.parts.length} components. Spread your hands wide.`, "ok");
     } catch (e) {
-      Stage.endAnalyzing();
+      $("#analyzing").classList.remove("show");
       setPill("api-pill", "bad", "API");
       console.error(e);
       toast(e.message || "Analysis failed.", "error");
+      this.setStateUI("READY", "Drop another image to try again");
     }
-  },
-
-  _thumbnail(dataUrl, max) {
-    return new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const m = Math.max(img.width, img.height);
-        const s = Math.min(1, max / m);
-        const c = document.createElement("canvas");
-        c.width = img.width * s; c.height = img.height * s;
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL("image/jpeg", 0.7));
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
-  },
-
-  async shareSnapshot() {
-    if (!Stage.imageSrc) { toast("Nothing to share yet."); return; }
-    try {
-      const blob = await this._composeSnapshot();
-      if (navigator.canShare && blob) {
-        const file = new File([blob], "gesturex-dissection.png", { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: "GestureX Dissection" });
-          return;
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "gesturex-dissection.png";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      toast("Saved screenshot.", "success");
-    } catch (e) {
-      console.error(e);
-      toast("Could not capture screenshot.", "error");
-    }
-  },
-
-  async _composeSnapshot() {
-    const r = $("#stage-wrap").getBoundingClientRect();
-    const W = Math.min(1600, Math.round(r.width * 2));
-    const H = Math.round(W * (r.height / r.width));
-    const c = document.createElement("canvas");
-    c.width = W; c.height = H;
-    const ctx = c.getContext("2d");
-    // background
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, "#04050a"); grad.addColorStop(1, "#0a0d18");
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
-
-    // Image (smaller if exploded)
-    const img = await loadImg(Stage.imageSrc);
-    const scale = Stage.state === "exploded" ? 0.36 : 0.86;
-    const targetW = Math.min(W * scale, img.width * 2);
-    const ratio = img.height / img.width;
-    const iw = targetW; const ih = iw * ratio;
-    const ix = (W - iw) / 2; const iy = (H - ih) / 2;
-    ctx.save();
-    ctx.shadowBlur = 30; ctx.shadowColor = "rgba(0, 234, 255, 0.4)";
-    roundRect(ctx, ix, iy, iw, ih, 18);
-    ctx.clip();
-    ctx.drawImage(img, ix, iy, iw, ih);
-    ctx.restore();
-
-    // Parts
-    if (Stage.state === "exploded" && Stage.parts.length) {
-      const cardW = 260, cardH = 110;
-      const cx = W / 2, cy = H / 2;
-      const radius = Math.min(W, H) * 0.36;
-      Stage.parts.forEach((p, i) => {
-        const angle = (i / Stage.parts.length) * Math.PI * 2 - Math.PI / 2;
-        const x = cx + Math.cos(angle) * radius - cardW / 2;
-        const y = cy + Math.sin(angle) * radius - cardH / 2;
-        // line
-        ctx.strokeStyle = (p.color_hint || "#00eaff");
-        ctx.globalAlpha = 0.55; ctx.lineWidth = 1; ctx.setLineDash([6, 6]);
-        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x + cardW / 2, y + cardH / 2); ctx.stroke();
-        ctx.setLineDash([]); ctx.globalAlpha = 1;
-        // card bg
-        ctx.fillStyle = "rgba(10, 14, 24, 0.92)";
-        roundRect(ctx, x, y, cardW, cardH, 14); ctx.fill();
-        ctx.strokeStyle = "rgba(120, 200, 255, 0.32)"; ctx.lineWidth = 1.5; ctx.stroke();
-        // swatch
-        ctx.fillStyle = p.color_hint || "#00eaff";
-        ctx.fillRect(x + cardW - 22, y + 12, 12, 12);
-        // text
-        ctx.fillStyle = "#9aa6bb"; ctx.font = "11px ui-monospace, monospace";
-        ctx.fillText(`PART ${String(i + 1).padStart(2, "0")} / ${String(Stage.parts.length).padStart(2, "0")}`, x + 14, y + 22);
-        ctx.fillStyle = "white"; ctx.font = "600 16px system-ui, sans-serif";
-        ctx.fillText(truncate(p.name, 26), x + 14, y + 44);
-        ctx.fillStyle = "#9aa6bb"; ctx.font = "12px system-ui, sans-serif";
-        wrapText(ctx, p.description, x + 14, y + 62, cardW - 28, 14, 3);
-      });
-    }
-
-    // Branding
-    ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "600 14px system-ui, sans-serif";
-    ctx.fillText("GestureX  ·  AI Image Dissector", 24, H - 24);
-
-    return new Promise(res => c.toBlob(b => res(b), "image/png"));
-  },
-};
-
-function loadImg(src) {
-  return new Promise((res, rej) => {
-    const i = new Image(); i.crossOrigin = "anonymous";
-    i.onload = () => res(i); i.onerror = rej; i.src = src;
-  });
-}
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
-function wrapText(ctx, text, x, y, maxW, lh, maxLines) {
-  const words = (text || "").split(" "); let line = ""; let lines = 0;
-  for (let i = 0; i < words.length; i++) {
-    const test = line + words[i] + " ";
-    if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line.trim(), x, y); y += lh; line = words[i] + " ";
-      if (++lines >= maxLines - 1) {
-        // last line, ellipsize
-        let rest = words.slice(i).join(" ");
-        while (ctx.measureText(rest + "…").width > maxW && rest.length > 0) rest = rest.slice(0, -1);
-        ctx.fillText(rest + "…", x, y); return;
-      }
-    } else line = test;
   }
-  if (line) ctx.fillText(line.trim(), x, y);
-}
+};
 
 /* ----------------------------- Boot ----------------------------- */
 window.addEventListener("DOMContentLoaded", () => App.init());

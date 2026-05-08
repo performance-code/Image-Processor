@@ -1,114 +1,75 @@
-# GestureX — AI Image Dissector
+# GestureX — Holographic Dissector
 
-A single-file web app that uses **Anthropic Claude (vision)** to identify every component of an uploaded image, then lets you **dissect and reassemble it with hand gestures** captured by your webcam (via MediaPipe Hands).
+A WebGL holographic interface in the browser. Your live webcam is the backdrop, the uploaded image becomes a real 3D object floating in front of you, and your hands drive everything via MediaPipe.
 
-Drop an image → Claude analyzes it → pinch your hands apart → the image explodes into labeled, color-coded component cards in 3D space. Pinch in to reassemble. Open palm to pause. Point to inspect. Swipe to cycle.
+```
+FLAT  ──spread──▶  HOLOGRAM  ──spread──▶  EXPLODED
+       ◀──close──             ◀──close──
+```
 
-It also has full keyboard / mouse / touch fallbacks so it works without a camera.
+- **FLAT** — your image lying as a flat plane, lit, with a holographic ring beneath it.
+- **HOLOGRAM** — every component Claude identified lifts off the plane and floats at its own depth. Two-hand motion rotates the model in 3D.
+- **EXPLODED** — components fly outward radially in 3D space. Pinch to grab one and drag it through space. Pinch-tap → details.
 
----
+## Stack
+
+- **Three.js** — WebGL scene, mesh per component, depth, parallax, particle field.
+- **Live `<video>` background** — the same MediaStream is used by both MediaPipe and the AR backdrop, so you appear behind the hologram.
+- **MediaPipe Hands** — two-hand tracking, runs locally in the browser.
+- **Claude vision** — `claude-sonnet-4-5` by default, configurable. Identifies every distinct part with position, size, color, and category metadata. Each part is then cropped from the original image and used as the texture for its own 3D plane.
 
 ## Quick start
 
-You only need `index.html`. Everything is bundled (CSS, JS, MediaPipe via CDN).
+You only need `index.html`.
 
 ```bash
-# Local
 python3 -m http.server 8000
-# then open http://localhost:8000
+# open http://localhost:8000
 ```
 
-> A static server is recommended over `file://` so the camera and clipboard APIs work reliably.
+Open the gear icon (top-right), paste an Anthropic API key from <https://console.anthropic.com/settings/keys>. Stored in `localStorage` only.
 
-On first load, click the gear icon (top right) and paste an Anthropic API key — get one at <https://console.anthropic.com/settings/keys>. The key is stored in your browser's `localStorage` only.
+## How it works
 
----
+1. Drop an image, paste, or click **Upload**. (Or click **Scan Live**, hold an object up to your camera, count down 3-2-1 — Claude analyses what you held up.)
+2. Claude returns the part list with positions and colors.
+3. The full image becomes a textured plane in WebGL. Each part becomes its own cropped textured plane, with three positions: flat (lying on top of the base), holo (lifted to its own depth), and exploded (radial in 3D).
+4. The state machine smoothly tweens between these positions as you spread your hands.
+5. Two-hand horizontal/vertical motion drives `root.rotation`. Single-hand pinch raycasts to the nearest mesh and attaches it to your fingers.
+
+## Gestures
+
+| Gesture | Action |
+|---|---|
+| Two-hand **spread** | Advance state (Flat → Holo → Exploded) |
+| Two-hand **close** | Retreat state |
+| Two-hand **move** (sideways/vertical) | Rotate the whole model |
+| One hand **pinch** over a part | Grab and drag in 3D |
+| One hand **pinch + release** (no drag) | Open detail card |
+| Open palm + slow drift | Slow Y rotation |
+
+Keyboard fallbacks: **Space** advance · **Esc** retreat · **U** upload · **L** scan live · **C** camera · **S** settings · **←/→** cycle parts.
 
 ## Deploy
 
-### Vercel
 ```bash
-npx vercel deploy --prod
-```
-No build step. Vercel will serve `index.html` at the root.
-
-### Netlify
-```bash
-npx netlify deploy --dir=. --prod
+npx vercel deploy --prod        # Vercel
+npx netlify deploy --dir=. --prod  # Netlify
+# or push to a GitHub repo and enable Pages
 ```
 
-### GitHub Pages
-1. Push to a repo.
-2. Settings → Pages → Source: `main` branch, root.
-3. Visit `https://<user>.github.io/<repo>/`.
-
-### Cloudflare Pages
-Drop the folder in the dashboard, or `wrangler pages deploy .`.
-
-Anywhere that serves a static file works.
-
----
-
-## Features
-
-- **Image upload** — drag & drop, click, or paste from clipboard.
-- **AI analysis** — Claude vision (default `claude-sonnet-4-5`, configurable in Settings) identifies every distinct part, returning structured JSON (id, name, description, category, position hint, color hint).
-- **Hand-gesture controls** (MediaPipe Hands, runs locally in the browser):
-  - Two-hand **pinch out** → dissect / explode
-  - Two-hand **pinch in** → reassemble
-  - **Open palm** → pause/freeze
-  - **Index point** → highlight a part
-  - **Swipe L/R** → cycle through parts
-- **Fallback controls**: Space = explode/assemble, Arrow keys = cycle parts, on-screen buttons, two-finger pinch on touch.
-- **Sci-fi UI**: dark glassmorphism, neon cyan/magenta accents, scanline overlay, particle bursts.
-- **History** — last 5 dissections cached in `localStorage`.
-- **Share** — exports a composed PNG of the current dissection state.
-- **Sound effects** — optional, generated via Web Audio (no asset downloads).
-- **Mobile responsive** — works on phones, tablets, and desktops.
-
----
-
-## How API access works
-
-Claude calls go directly from the browser to `api.anthropic.com` using the
-`anthropic-dangerous-direct-browser-access: true` header. This means **the user's key
-is sent from their device only** — there is no server in the middle.
-
-If you want to host this for other people without exposing them to the API-key flow,
-add a small proxy that injects the key server-side and adjust `Claude.endpoint` in
-`index.html` to point at it.
-
----
-
-## File structure
-
-```
-index.html   # the entire app
-README.md    # this file
-```
-
-That's it. No build, no deps.
-
----
+`index.html` + `vercel.json` + `README.md`. No build, no deps.
 
 ## Browser support
 
-- Chrome / Edge / Brave / Arc — full support
-- Firefox — full support
-- Safari (iOS 16+, macOS 13+) — full support; tap "Camera" to grant access
-- Older browsers without `getUserMedia` will still work via keyboard / button / touch fallbacks
-
----
+Modern Chrome / Edge / Firefox / Safari (with WebGL 2 + `getUserMedia`). The site needs HTTPS or `localhost` for camera access.
 
 ## Troubleshooting
 
-- **"Claude API 401 / invalid x-api-key"** — your Anthropic key is wrong; re-enter in Settings.
-- **"Model … not found" / 404** — the model snapshot has been retired. Open Settings → Model and enter a current one (e.g. `claude-sonnet-4-5`, `claude-sonnet-4-6`, or `claude-opus-4-7`).
-- **"MediaPipe Hands failed to load"** — your network blocked `cdn.jsdelivr.net`. Allow it or self-host the `@mediapipe/hands` package.
-- **Camera not appearing** — browsers require HTTPS (or localhost) for `getUserMedia`. Deploy to any HTTPS host above.
-- **Gestures feel jumpy** — improve lighting, keep both hands fully in frame, and avoid backlight.
-
----
+- **Three.js or MediaPipe failed to load** — check that `cdn.jsdelivr.net` isn't blocked.
+- **404 on the model** — Anthropic retires older snapshots. Open Settings and try `claude-sonnet-4-5`, `claude-sonnet-4-6`, or `claude-opus-4-7`.
+- **Gestures feel jumpy** — improve lighting, keep both hands fully in frame, avoid backlight.
+- **Camera blocked** — grant the site camera permission in your browser site settings, then refresh.
 
 ## License
 
