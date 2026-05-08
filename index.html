@@ -457,37 +457,75 @@
 
   /* Two-hand spread meter (top-center while tracking) */
   .meter {
-    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
-    z-index: 4; padding: 6px 16px;
-    background: var(--bg-glass);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--line);
+    position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
+    z-index: 4; padding: 10px 22px;
+    background: rgba(2, 5, 12, 0.85);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--cyan);
     border-radius: 999px;
-    display: flex; align-items: center; gap: 12px;
-    font: 10px/1 ui-monospace, monospace;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--dim);
+    display: flex; align-items: center; gap: 14px;
+    font: 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text);
     opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0.2s ease;
+    box-shadow: 0 14px 50px rgba(0,0,0,0.6), 0 0 28px rgba(0,234,255,0.3);
   }
   .meter.show { opacity: 1; visibility: visible; }
   .meter-bar {
-    width: 200px; height: 4px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 2px; overflow: hidden;
+    width: 240px; height: 8px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px; overflow: hidden;
     position: relative;
+    border: 1px solid rgba(0,234,255,0.15);
   }
   .meter-bar > i {
-    position: absolute; top: 0; bottom: 0; width: 1px;
+    display: block; height: 100%; width: 0%;
     background: linear-gradient(90deg, var(--magenta), var(--cyan));
-    transition: left 0.08s linear, width 0.08s linear;
+    transition: width 0.07s linear;
+    box-shadow: 0 0 12px rgba(0,234,255,0.6);
   }
   .meter-bar::before, .meter-bar::after {
-    content: ""; position: absolute; top: -3px; height: 10px; width: 1px;
-    background: rgba(255,255,255,0.3);
+    content: ""; position: absolute; top: -4px; height: 16px; width: 2px;
+    background: rgba(255,255,255,0.45);
+    box-shadow: 0 0 6px rgba(0,234,255,0.6);
   }
-  .meter-bar::before { left: 25%; }
-  .meter-bar::after { left: 75%; }
-  .meter b { color: var(--cyan); }
+  .meter-bar::before { left: calc(1.6 / 5 * 100% - 1px); }
+  .meter-bar::after  { left: calc(3.6 / 5 * 100% - 1px); }
+  .meter b { color: var(--cyan); text-shadow: 0 0 10px rgba(0,234,255,0.5); }
+  .meter .pip {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--good);
+    box-shadow: 0 0 10px var(--good); animation: pulse 1.6s infinite;
+  }
+
+  /* Big "ADVANCE" prompt that appears in FLAT state */
+  .big-prompt {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3; pointer-events: none;
+    text-align: center;
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  .big-prompt.show { opacity: 1; }
+  .big-prompt .big {
+    font: 700 28px/1 ui-monospace, monospace;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    background: linear-gradient(120deg, var(--cyan), var(--magenta));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 32px rgba(0,234,255,0.4);
+    animation: bigPulse 2.4s ease-in-out infinite;
+  }
+  .big-prompt .small {
+    margin-top: 12px;
+    font: 11px/1.4 ui-monospace, monospace;
+    letter-spacing: 0.18em; color: var(--text);
+    text-shadow: 0 0 8px #000;
+  }
+  .big-prompt .small kbd {
+    display: inline-block; padding: 2px 8px; margin: 0 4px;
+    background: rgba(0,234,255,0.12); border: 1px solid var(--cyan);
+    border-radius: 5px; color: var(--cyan); font: 10px/1 ui-monospace, monospace;
+  }
+  @keyframes bigPulse { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
 
   /* Camera tracking widget (small, bottom-left) */
   .cam-widget {
@@ -572,9 +610,16 @@
 
 <!-- Two-hand meter -->
 <div class="meter" id="meter">
+  <span class="pip"></span>
   <span id="m-label">SPREAD</span>
   <div class="meter-bar"><i id="m-fill"></i></div>
   <span><b id="m-state">FLAT</b></span>
+</div>
+
+<!-- Big advance prompt -->
+<div class="big-prompt" id="big-prompt">
+  <div class="big" id="bp-text">↔ SPREAD HANDS</div>
+  <div class="small">or press <kbd>SPACE</kbd> to advance · <kbd>ESC</kbd> to retreat</div>
 </div>
 
 <!-- Bottom HUD: state + gesture hint -->
@@ -997,14 +1042,22 @@ const Scene = {
     const H = aspect >= 1 ? targetMax / aspect : targetMax;
     this.imageDims = { W, H };
 
-    // Base plane (full image)
+    // Base plane (full image) — detect & remove uniform background
     const fullCanvas = imageToCanvas(img, 1024);
+    const bg = detectBackground(fullCanvas);
+    if (bg) {
+      chromaKey(fullCanvas, bg, 36);
+      console.log("GestureX: removed background", bg);
+    }
+    this.bgColor = bg;
     const baseTex = new THREE.CanvasTexture(fullCanvas);
     if (THREE.SRGBColorSpace) baseTex.colorSpace = THREE.SRGBColorSpace;
+    baseTex.minFilter = THREE.LinearFilter;
+    baseTex.magFilter = THREE.LinearFilter;
     const baseGeom = new THREE.PlaneGeometry(W, H, 1, 1);
     const baseMat = new THREE.MeshBasicMaterial({
       map: baseTex, transparent: true, opacity: 1.0,
-      side: THREE.DoubleSide,
+      side: THREE.DoubleSide, alphaTest: 0.05,
     });
     this.baseMesh = new THREE.Mesh(baseGeom, baseMat);
     this.root.add(this.baseMesh);
@@ -1024,14 +1077,14 @@ const Scene = {
     this.partMeshes = [];
     for (let i = 0; i < this.parts.length; i++) {
       const p = this.parts[i];
-      const partTex = makeCroppedTexture(img, p);
-      const sz = ({ small: 0.20, medium: 0.30, large: 0.45 })[p.size_hint] || 0.30;
+      const partTex = makeCroppedTexture(img, p, bg);
+      const sz = ({ small: 0.22, medium: 0.34, large: 0.50 })[p.size_hint] || 0.34;
       const pW = W * sz;
       const pH = H * sz;
       const geom = new THREE.PlaneGeometry(pW, pH);
       const mat = new THREE.MeshBasicMaterial({
         map: partTex, transparent: true, opacity: 0.0,
-        side: THREE.DoubleSide,
+        side: THREE.DoubleSide, alphaTest: 0.05,
       });
       const mesh = new THREE.Mesh(geom, mat);
 
@@ -1040,17 +1093,21 @@ const Scene = {
       const flatY = -(p.position_hint.y - 0.5) * H;
       const flatPos = new THREE.Vector3(flatX, flatY, 0.001 + i * 0.0001);
 
-      // HOLO: same XY, raised in Z (parallax depth)
-      const holoZ = 0.15 + (i / Math.max(1, this.parts.length - 1)) * 0.7;
-      const holoPos = new THREE.Vector3(flatX, flatY, holoZ);
+      // HOLO: parts spread in XY too (slight push outward) AND lifted to varied Z
+      // for very visible parallax. Push direction is from image center.
+      const dirLen = Math.max(0.001, Math.hypot(flatX, flatY));
+      const pushX = (flatX / dirLen) * 0.25;
+      const pushY = (flatY / dirLen) * 0.25;
+      const holoZ = 0.4 + (i / Math.max(1, this.parts.length - 1)) * 1.6;
+      const holoPos = new THREE.Vector3(flatX + pushX, flatY + pushY, holoZ);
 
-      // EXPLODED: radial in 3D
+      // EXPLODED: full radial scatter in 3D
       const angle = (i / this.parts.length) * Math.PI * 2 - Math.PI / 2;
-      const r = Math.max(W, H) * 1.05;
+      const r = Math.max(W, H) * 1.35;
       const expPos = new THREE.Vector3(
         Math.cos(angle) * r,
-        Math.sin(angle) * r * 0.7,
-        0.5 + (i % 3) * 0.4
+        Math.sin(angle) * r * 0.75,
+        0.6 + ((i * 7) % 5) * 0.35
       );
 
       mesh.position.copy(flatPos);
@@ -1087,6 +1144,9 @@ const Scene = {
     this.stateValue = 0;
     this.root.rotation.set(0, 0, 0);
     this.rotationVel = { x: 0, y: 0 };
+    // Show advance prompt
+    const bp = document.getElementById("big-prompt");
+    if (bp) bp.classList.add("show");
   },
 
   clear() {
@@ -1104,6 +1164,8 @@ const Scene = {
     Labels.clear();
     this.state = "idle";
     this.stateValue = 0; this.targetState = 0;
+    const bp = document.getElementById("big-prompt");
+    if (bp) bp.classList.remove("show");
   },
 
   setStateTarget(s) {
@@ -1112,16 +1174,35 @@ const Scene = {
     this.targetState = s;
     if (s === 1 && this.state === "flat") {
       Audio.morph();
-      App.setStateUI("HOLOGRAM", "Hands open & move → rotate · Pinch a part → grab · Spread again → explode");
+      App.setStateUI("HOLOGRAM", "Move both hands → rotate · Pinch a part → grab · Spread wider → explode");
       this.state = "holo";
+      // Auto-tilt so the depth is immediately visible
+      this.rotationVel.y = 0.04;
+      this.rotationVel.x = -0.012;
+      this.flashRing();
     } else if (s === 0 && (this.state === "holo" || this.state === "exploded")) {
       Audio.unmorph();
       App.setStateUI("FLAT", "Spread two hands → materialise into 3D");
       this.state = "flat";
+      // Reset rotation
+      this.rotationVel.x = (0 - this.root.rotation.x) * 0.04;
+      this.rotationVel.y = (0 - this.root.rotation.y) * 0.04;
     } else if (s === 2 && this.state !== "exploded") {
       Audio.explode();
-      App.setStateUI("EXPLODED", "Pinch any part → drag · Pinch then release on a part → details · Close hands → reassemble");
+      App.setStateUI("EXPLODED", "Pinch any part → drag · Quick pinch → details · Close hands → reassemble");
       this.state = "exploded";
+      this.flashRing();
+    }
+    // Show/hide the big prompt based on state
+    const bp = document.getElementById("big-prompt");
+    if (bp) {
+      if (this.state === "flat" && this.partMeshes.length) {
+        bp.classList.add("show");
+        const t = document.getElementById("bp-text");
+        if (t) t.textContent = "↔ SPREAD HANDS";
+      } else {
+        bp.classList.remove("show");
+      }
     }
   },
 
@@ -1193,14 +1274,22 @@ const Scene = {
         if (u.outline) u.outline.material.opacity = clamp((v - 0.3) * 1.2, 0, 0.7);
       });
 
-      // Hologram rings opacity follows state
+      // Hologram rings opacity follows state, with flash on transition
+      if (this.ringFlash > 0) this.ringFlash *= 0.92;
       if (this.hologramRing) {
-        this.hologramRing.material.opacity = lerp(0, 0.55, clamp(v, 0, 1));
+        const ringBase = lerp(0, 0.55, clamp(v, 0, 1));
+        this.hologramRing.material.opacity = clamp(ringBase + this.ringFlash * 0.6, 0, 1);
         if (this.hologramRing.userData.inner) {
-          this.hologramRing.userData.inner.material.opacity = lerp(0, 0.5, clamp(v - 0.4, 0, 1));
+          const innerBase = lerp(0, 0.5, clamp(v - 0.4, 0, 1));
+          this.hologramRing.userData.inner.material.opacity = clamp(innerBase + this.ringFlash * 0.5, 0, 1);
         }
         this.hologramRing.rotation.z = t * 0.15;
         if (this.hologramRing.userData.inner) this.hologramRing.userData.inner.rotation.z = -t * 0.22;
+      }
+      // Particle field intensity boost on transition
+      if (this.particles) {
+        const boost = this.ringFlash * 0.5;
+        this.particles.material.opacity = clamp(lerp(0.18, 0.55, clamp(this.stateValue, 0, 1)) + boost, 0, 1);
       }
     }
 
@@ -1215,8 +1304,6 @@ const Scene = {
         pos.array[off + 2] = base[off+2] + Math.sin(t * 0.6 + i * 0.3) * 0.05;
       }
       pos.needsUpdate = true;
-      // Particles intensify when active
-      this.particles.material.opacity = lerp(0.18, 0.55, clamp(this.stateValue, 0, 1));
     }
 
     // Update DOM labels
@@ -1267,9 +1354,9 @@ const Scene = {
   },
 
   flashRing() {
-    if (!this.hologramRing) return;
-    this.hologramRing.material.opacity = 1;
-  }
+    this.ringFlash = 1.0;
+  },
+  ringFlash: 0,
 };
 
 /* ----------------------------- DOM Labels ----------------------------- */
@@ -1626,69 +1713,99 @@ const Gesture = {
     }
 
     // ---- Two-hand: spread/close & rotation ----
+    // Use absolute spread (hand-pair distance / avg hand size). Generous thresholds.
     if (states[0] && states[1] && !this.grabs[0] && !this.grabs[1]) {
       const a = states[0], b = states[1];
       const d = dist2(a.cx, a.cy, b.cx, b.cy);
       const avgHand = (a.hSize + b.hSize) / 2;
-      const ratio = d / Math.max(0.05, avgHand);
-      this.twoHandRatioEMA = this.twoHandRatioEMA == null ? ratio : lerp(this.twoHandRatioEMA, ratio, 0.4);
-      if (this.twoHandBaseline == null) this.twoHandBaseline = this.twoHandRatioEMA;
+      const ratio = d / Math.max(0.05, avgHand);  // ~1=hands touching, ~5=arms wide
+      this.twoHandRatioEMA = this.twoHandRatioEMA == null ? ratio : lerp(this.twoHandRatioEMA, ratio, 0.45);
 
-      const delta = this.twoHandRatioEMA - this.twoHandBaseline;
+      const SPREAD_TRIGGER = 3.6;   // hands ~ 3.6x hand-size apart -> advance
+      const CLOSE_TRIGGER  = 1.6;   // hands ~ close together     -> retreat
+      const r = this.twoHandRatioEMA;
 
-      // Show meter
+      // Meter — visible whenever both hands are tracked
       $("#meter").classList.add("show");
-      const SPREAD = 1.3;
-      const CLOSE = -1.1;
       const mFill = $("#m-fill");
       const mLabel = $("#m-label");
       const mState = $("#m-state");
-      const fill = clamp(50 + (delta / SPREAD) * 50, 0, 100);
+      // Map ratio (1 .. 5) onto bar 0..100
+      const fill = clamp(((r - 1) / 4) * 100, 0, 100);
       mFill.style.left = "0%";
       mFill.style.width = fill + "%";
       mState.textContent = ["FLAT", "HOLOGRAM", "EXPLODED"][Scene.targetState] || "—";
-      if (delta > 0.1) mLabel.textContent = "SPREAD →";
-      else if (delta < -0.1) mLabel.textContent = "← CLOSE";
+      if (r > SPREAD_TRIGGER * 0.85) mLabel.textContent = "SPREAD →";
+      else if (r < CLOSE_TRIGGER * 1.15) mLabel.textContent = "← CLOSE";
       else mLabel.textContent = "HOLD";
 
-      // Trigger
-      if (delta >= SPREAD && t - this.cooldownAdvance > 700 && Scene.targetState < 2) {
+      // Trigger — absolute spread
+      if (r >= SPREAD_TRIGGER && t - this.cooldownAdvance > 600 && Scene.targetState < 2) {
         Scene.cycleForward();
         this.cooldownAdvance = t;
-        this.twoHandBaseline = this.twoHandRatioEMA - 0.3; // re-baseline
-      } else if (delta <= CLOSE && t - this.cooldownRetreat > 700 && Scene.targetState > 0) {
+      } else if (r <= CLOSE_TRIGGER && t - this.cooldownRetreat > 600 && Scene.targetState > 0) {
         Scene.cycleBackward();
         this.cooldownRetreat = t;
-        this.twoHandBaseline = this.twoHandRatioEMA + 0.3;
       }
 
-      // Two-hand rotation: track midpoint
+      // Two-hand rotation — only when not actively transitioning
       const midX = (a.cx + b.cx) / 2;
       const midY = (a.cy + b.cy) / 2;
-      if (this.twoHandLastMid) {
+      if (this.twoHandLastMid && t - this.cooldownAdvance > 300 && t - this.cooldownRetreat > 300) {
         const dx = midX - this.twoHandLastMid.x;
         const dy = midY - this.twoHandLastMid.y;
-        // Only rotate if change is meaningful
-        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+        if (Math.abs(dx) > 0.0015 || Math.abs(dy) > 0.0015) {
           Scene.rotateBy(dx, dy);
         }
       }
       this.twoHandLastMid = { x: midX, y: midY };
 
-      App.setHint(`<b>Spread</b> hands → next state · <b>Pinch</b> a part → grab · <b>Move</b> hands → rotate`);
+      App.setHint(`<b>Spread</b> wider → ${["holo","explode","—"][Scene.targetState]} · <b>Move both</b> → rotate · <b>Pinch a part</b> → grab`);
     } else {
       this.twoHandLastMid = null;
-      if (this.grabs[0] || this.grabs[1]) {
-        $("#meter").classList.remove("show");
-        App.setHint(`<b>Holding</b> a part — drag in space, release to drop · short pinch → details`);
+      this.twoHandRatioEMA = null;
+
+      // ----- Single-hand fallback advance/retreat: pinch fist in empty space -----
+      // If the user pinches in empty area (no part hit) for 350ms, advance state.
+      const lone = states.find(s => s);
+      if (lone && lone.isPinch && !this.grabs[0] && !this.grabs[1]) {
+        // Did the pinch land on a part? If not, count as state-change pinch.
+        const hit = Scene.pickPart(lone.cx, lone.cy, 0.16);
+        if (!hit) {
+          if (!this._lonePinchStart) this._lonePinchStart = t;
+          const held = t - this._lonePinchStart;
+          // Show progress on meter
+          $("#meter").classList.add("show");
+          $("#m-label").textContent = "HOLD PINCH";
+          $("#m-fill").style.left = "0%";
+          $("#m-fill").style.width = clamp(held / 350 * 100, 0, 100) + "%";
+          $("#m-state").textContent = ["FLAT","HOLOGRAM","EXPLODED"][Scene.targetState] || "—";
+          if (held > 350 && t - this.cooldownAdvance > 600) {
+            // direction: pinch above center -> advance, below -> retreat
+            if (lone.cy < 0.5 && Scene.targetState < 2) Scene.cycleForward();
+            else if (lone.cy >= 0.5 && Scene.targetState > 0) Scene.cycleBackward();
+            else if (Scene.targetState < 2) Scene.cycleForward();
+            else Scene.cycleBackward();
+            this.cooldownAdvance = t; this.cooldownRetreat = t;
+            this._lonePinchStart = null;
+          }
+        } else {
+          this._lonePinchStart = null;
+        }
       } else {
-        $("#meter").classList.remove("show");
-        // Single-hand idle: open palm rotates by drift
+        this._lonePinchStart = null;
+        if (!this.grabs[0] && !this.grabs[1]) $("#meter").classList.remove("show");
+      }
+
+      if (this.grabs[0] || this.grabs[1]) {
+        App.setHint(`<b>Holding</b> a part — drag in space, release to drop · quick pinch → details`);
+      } else {
+        // Single-hand open palm slowly rotates (only in HOLO/EXPLODED)
         const open = states.find(s => s?.isOpen);
         if (open && Scene.state !== "flat") {
-          // Rotate slowly with hand position
-          const dx = (open.cx - 0.5) * 0.005;
-          Scene.rotateBy(dx, 0);
+          const dx = (open.cx - 0.5) * 0.006;
+          const dy = (open.cy - 0.5) * 0.004;
+          Scene.rotateBy(dx, dy);
         }
         App.setHint(this._defaultHint());
       }
@@ -1773,8 +1890,68 @@ function imageToCanvas(img, maxDim) {
   c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
   return c;
 }
-function makeCroppedTexture(img, p) {
-  const sz = ({ small: 0.18, medium: 0.28, large: 0.42 })[p.size_hint] || 0.28;
+
+/**
+ * Background removal heuristic for product-style images (uniform backdrop).
+ * Samples the corners + edge midpoints. If they're uniform enough, treats
+ * that as the background colour and softly keys it out. Returns null bg
+ * (and leaves the canvas alone) when the corners disagree (busy scenes).
+ */
+function detectBackground(canvas) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const samples = [];
+  const pad = 2;
+  const points = [
+    [pad, pad], [w-1-pad, pad], [pad, h-1-pad], [w-1-pad, h-1-pad],
+    [(w/2)|0, pad], [(w/2)|0, h-1-pad], [pad, (h/2)|0], [w-1-pad, (h/2)|0],
+  ];
+  for (const [x, y] of points) {
+    const i = (y * w + x) * 4;
+    samples.push([data[i], data[i+1], data[i+2]]);
+  }
+  const avg = [0, 0, 0];
+  for (const s of samples) { avg[0] += s[0]; avg[1] += s[1]; avg[2] += s[2]; }
+  avg[0] /= samples.length; avg[1] /= samples.length; avg[2] /= samples.length;
+  let variance = 0;
+  for (const s of samples) {
+    variance += Math.abs(s[0] - avg[0]) + Math.abs(s[1] - avg[1]) + Math.abs(s[2] - avg[2]);
+  }
+  variance /= samples.length;
+  if (variance > 80) return null; // backdrop not uniform
+  return { r: avg[0], g: avg[1], b: avg[2] };
+}
+
+/**
+ * Apply chroma-key transparency to a canvas, in place. Soft edge.
+ */
+function chromaKey(canvas, bg, tol = 36) {
+  if (!bg) return canvas;
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const id = ctx.getImageData(0, 0, w, h);
+  const a = id.data;
+  const tol2 = tol * tol;
+  const softTol2 = (tol * 1.7) * (tol * 1.7);
+  for (let i = 0; i < a.length; i += 4) {
+    const dr = a[i] - bg.r;
+    const dg = a[i+1] - bg.g;
+    const db = a[i+2] - bg.b;
+    const d2 = dr*dr + dg*dg + db*db;
+    if (d2 < tol2) {
+      a[i+3] = 0;
+    } else if (d2 < softTol2) {
+      const t = (Math.sqrt(d2) - tol) / (tol * 0.7);
+      a[i+3] = Math.round(t * 255);
+    }
+  }
+  ctx.putImageData(id, 0, 0);
+  return canvas;
+}
+
+function makeCroppedTexture(img, p, bg) {
+  const sz = ({ small: 0.20, medium: 0.32, large: 0.48 })[p.size_hint] || 0.32;
   const cropW = Math.max(32, img.width * sz);
   const cropH = Math.max(32, img.height * sz);
   const cx = clamp(p.position_hint.x * img.width - cropW / 2, 0, img.width - cropW);
@@ -1783,14 +1960,12 @@ function makeCroppedTexture(img, p) {
   c.width = Math.round(cropW); c.height = Math.round(cropH);
   const ctx = c.getContext("2d");
   ctx.drawImage(img, cx, cy, cropW, cropH, 0, 0, c.width, c.height);
-  // Optional: outline glow
-  ctx.strokeStyle = p.color_hint || "#00eaff";
-  ctx.lineWidth = 2;
-  ctx.shadowBlur = 8;
-  ctx.shadowColor = p.color_hint || "#00eaff";
-  ctx.strokeRect(1, 1, c.width - 2, c.height - 2);
+  // Background-key the crop using the same bg colour
+  if (bg) chromaKey(c, bg, 36);
   const tex = new THREE.CanvasTexture(c);
   if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
   return tex;
 }
 function disposeMesh(m) {
