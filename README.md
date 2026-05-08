@@ -52,7 +52,7 @@ Anywhere that serves a static file works.
 ## Features
 
 - **Image upload** — drag & drop, click, or paste from clipboard.
-- **AI analysis** — Claude Sonnet 4 vision identifies every distinct part, returning structured JSON (id, name, description, category, position hint, color hint).
+- **AI analysis** — Claude vision (default `claude-sonnet-4-5`, configurable in Settings) identifies every distinct part, returning structured JSON (id, name, description, category, position hint, color hint).
 - **Hand-gesture controls** (MediaPipe Hands, runs locally in the browser):
   - Two-hand **pinch out** → dissect / explode
   - Two-hand **pinch in** → reassemble
@@ -103,6 +103,7 @@ That's it. No build, no deps.
 ## Troubleshooting
 
 - **"Claude API 401 / invalid x-api-key"** — your Anthropic key is wrong; re-enter in Settings.
+- **"Model … not found" / 404** — the model snapshot has been retired. Open Settings → Model and enter a current one (e.g. `claude-sonnet-4-5`, `claude-sonnet-4-6`, or `claude-opus-4-7`).
 - **"MediaPipe Hands failed to load"** — your network blocked `cdn.jsdelivr.net`. Allow it or self-host the `@mediapipe/hands` package.
 - **Camera not appearing** — browsers require HTTPS (or localhost) for `getUserMedia`. Deploy to any HTTPS host above.
 - **Gestures feel jumpy** — improve lighting, keep both hands fully in frame, and avoid backlight.

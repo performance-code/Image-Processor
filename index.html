@@ -876,7 +876,15 @@
     <input type="password" id="api-key" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" />
     <div class="info">
       Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
-      The first request enables image analysis. Vision uses model <code style="color:var(--cyan)">claude-sonnet-4-20250514</code>.
+      The first request enables image analysis.
+    </div>
+
+    <label for="api-model" style="margin-top:14px">Model (vision-capable)</label>
+    <input type="text" id="api-model" placeholder="claude-sonnet-4-5" autocomplete="off" spellcheck="false" />
+    <div class="info">
+      Defaults to <code style="color:var(--cyan)">claude-sonnet-4-5</code>. You can also try
+      <code style="color:var(--cyan)">claude-sonnet-4-6</code> or <code style="color:var(--cyan)">claude-opus-4-7</code>.
+      Older snapshots like <code>claude-sonnet-4-20250514</code> may return 404 once retired.
     </div>
 
     <div style="margin-top:18px">
@@ -967,6 +975,7 @@ const Settings = {
   KEY: "gx.settings.v1",
   data: {
     apiKey: "",
+    model: "",
     sound: false,
     particles: true,
     mirror: true,
@@ -1033,7 +1042,8 @@ const Audio = {
 /* ----------------------------- Claude API ----------------------------- */
 const Claude = {
   endpoint: "https://api.anthropic.com/v1/messages",
-  model: "claude-sonnet-4-20250514",
+  defaultModel: "claude-sonnet-4-5",
+  get model() { return (Settings.data.model || "").trim() || this.defaultModel; },
 
   async analyzeImage(dataUrl, signal) {
     if (!Settings.data.apiKey) throw new Error("Missing Anthropic API key — open Settings to add one.");
@@ -1064,7 +1074,7 @@ const Claude = {
 
     const body = {
       model: this.model,
-      max_tokens: 2200,
+      max_tokens: 2400,
       system: sys,
       messages: [
         {
@@ -1095,6 +1105,9 @@ const Claude = {
         const j = await res.json();
         detail = j?.error?.message || JSON.stringify(j);
       } catch { detail = await res.text().catch(() => ""); }
+      if (res.status === 404 && /model/i.test(detail)) {
+        throw new Error(`Model "${this.model}" not found. Open Settings and pick a current model (e.g. claude-sonnet-4-5 or claude-opus-4-7).`);
+      }
       throw new Error(`Claude API ${res.status}: ${detail || "request failed"}`);
     }
     const json = await res.json();
@@ -1898,12 +1911,14 @@ const UI = {
     $("#settings-mask").addEventListener("click", (e) => { if (e.target.id === "settings-mask") this.closeSettings(); });
     $("#settings-save").addEventListener("click", () => this.saveSettings());
     $("#settings-clear").addEventListener("click", () => {
-      if (confirm("Clear stored API key?")) {
+      if (confirm("Clear stored API key and model override?")) {
         Settings.data.apiKey = "";
+        Settings.data.model = "";
         Settings.save();
         $("#api-key").value = "";
+        $("#api-model").value = "";
         setPill("api-pill", null, "API");
-        toast("API key cleared.");
+        toast("Cleared.");
       }
     });
 
@@ -1951,12 +1966,14 @@ const UI = {
 
   openSettings() {
     $("#api-key").value = Settings.data.apiKey || "";
+    $("#api-model").value = Settings.data.model || "";
     $("#settings-mask").classList.add("show");
     setTimeout(() => $("#api-key").focus(), 100);
   },
   closeSettings() { $("#settings-mask").classList.remove("show"); },
   saveSettings() {
     Settings.data.apiKey = $("#api-key").value.trim();
+    Settings.data.model = $("#api-model").value.trim();
     Settings.save();
     setPill("api-pill", Settings.data.apiKey ? "live" : null, "API");
     this.closeSettings();
