@@ -54,6 +54,30 @@
     touch-action: none;
   }
 
+  /* ============== AR background (live webcam) ============== */
+  .ar-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    overflow: hidden; opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+  .ar-bg video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    filter: saturate(0.55) brightness(0.6) contrast(1.05) blur(1.5px);
+  }
+  .ar-bg::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 60% at 50% 50%, transparent 35%, rgba(2,4,10,0.85) 100%),
+      linear-gradient(180deg, rgba(0, 234, 255, 0.07), transparent 30%, rgba(255, 61, 240, 0.07));
+    mix-blend-mode: normal;
+  }
+  body.ar .ar-bg { opacity: 1; }
+  body.ar .grid-bg { opacity: 0.35; }
+  body.ar .scan { opacity: 0.2; }
+
   /* ============== Background grid ============== */
   .grid-bg {
     position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -187,15 +211,52 @@
   .preview-card {
     position: absolute; left: 50%; top: 50%;
     transform: translate(-50%, -50%);
-    max-width: min(78vw, 720px);
-    max-height: min(72vh, 720px);
+    max-width: min(60vw, 560px);
+    max-height: min(64vh, 560px);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    border: 1px solid var(--line-strong);
-    background: rgba(8, 10, 18, 0.5);
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 60px rgba(0, 234, 255, 0.08);
+    border: 1px solid var(--cyan);
+    background: rgba(8, 10, 18, 0.4);
+    box-shadow:
+      0 25px 80px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(0, 234, 255, 0.4) inset,
+      0 0 60px rgba(0, 234, 255, 0.25),
+      0 0 120px rgba(255, 61, 240, 0.15);
     transition: opacity 0.4s var(--easing), transform 0.6s var(--easing), filter 0.5s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
   }
+  .preview-card::before {
+    content: "";
+    position: absolute; inset: -1px;
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(135deg, transparent 30%, rgba(0,234,255,0.5) 50%, transparent 70%),
+      linear-gradient(225deg, transparent 30%, rgba(255,61,240,0.4) 50%, transparent 70%);
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: screen;
+    z-index: 3;
+  }
+  .preview-card::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(0,234,255,0.05) 3px, rgba(0,234,255,0.05) 4px);
+    pointer-events: none;
+    z-index: 2;
+  }
+  /* Hologram corner ticks */
+  .preview-card .corners { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+  .preview-card .corners i {
+    position: absolute; width: 24px; height: 24px;
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 12px rgba(0,234,255,0.6);
+  }
+  .preview-card .corners i:nth-child(1) { left: 8px; top: 8px; border-right: 0; border-bottom: 0; }
+  .preview-card .corners i:nth-child(2) { right: 8px; top: 8px; border-left: 0; border-bottom: 0; }
+  .preview-card .corners i:nth-child(3) { left: 8px; bottom: 8px; border-right: 0; border-top: 0; }
+  .preview-card .corners i:nth-child(4) { right: 8px; bottom: 8px; border-left: 0; border-top: 0; }
   .preview-card.hidden { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(0.9); }
   .preview-card img {
     display: block;
@@ -234,9 +295,11 @@
   .dropzone {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    pointer-events: none; transition: background 0.2s ease;
+    pointer-events: none;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
   }
-  .dropzone.show { pointer-events: auto; }
+  .dropzone.show { pointer-events: auto; opacity: 1; visibility: visible; }
   .dropzone-inner {
     pointer-events: auto;
     width: min(86vw, 540px);
@@ -356,6 +419,146 @@
   #particles {
     position: absolute; inset: 0; pointer-events: none; z-index: 4;
   }
+
+  /* On-stage hand reticles (pointing finger / pinch position) */
+  .hand-reticle {
+    position: absolute; left: 0; top: 0;
+    width: 60px; height: 60px;
+    margin-left: -30px; margin-top: -30px;
+    pointer-events: none; z-index: 9;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .hand-reticle.show { opacity: 1; }
+  .hand-reticle .ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid var(--cyan);
+    box-shadow: 0 0 18px var(--cyan), inset 0 0 8px rgba(0, 234, 255, 0.5);
+  }
+  .hand-reticle .dot {
+    position: absolute; left: 50%; top: 50%;
+    width: 8px; height: 8px; margin: -4px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+  }
+  .hand-reticle .arc {
+    position: absolute; inset: -6px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--magenta);
+    border-right-color: var(--magenta);
+    transform: rotate(0deg);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .hand-reticle.pinching .ring { border-color: var(--magenta); box-shadow: 0 0 22px var(--magenta), inset 0 0 10px rgba(255, 61, 240, 0.6); }
+  .hand-reticle.pinching .dot { background: var(--magenta); box-shadow: 0 0 14px var(--magenta); }
+  .hand-reticle.pinching .arc { opacity: 1; }
+  .hand-reticle .label {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    margin-top: 6px;
+    font: 10px/1 ui-monospace, monospace;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--cyan);
+    text-shadow: 0 0 8px rgba(0,234,255,0.6);
+    white-space: nowrap;
+  }
+  .hand-reticle.pinching .label { color: var(--magenta); text-shadow: 0 0 8px rgba(255,61,240,0.6); }
+
+  /* Two-hand gesture progress meter (top-center of stage) */
+  .gesture-meter {
+    position: absolute; left: 50%; top: 92px;
+    transform: translateX(-50%);
+    z-index: 8;
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px;
+    background: rgba(8, 12, 22, 0.7);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font: 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: 0; transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+  .gesture-meter.show { opacity: 1; }
+  .gesture-meter .bar {
+    width: 110px; height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px; overflow: hidden;
+    position: relative;
+  }
+  .gesture-meter .bar > i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
+    transition: width 0.08s linear;
+  }
+  .gesture-meter .bar > b {
+    position: absolute; left: 50%; top: -3px; width: 1px; height: 10px;
+    background: rgba(255,255,255,0.4);
+  }
+  .gesture-meter b.action { color: var(--cyan); font-weight: 600; }
+
+  /* Inspect modal — large detail card */
+  .inspect-mask {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(2, 4, 10, 0.4);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .inspect-mask.show { opacity: 1; pointer-events: auto; }
+  .inspect {
+    width: min(560px, 92vw);
+    background: var(--panel-strong);
+    border: 1px solid var(--cyan);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.7), 0 0 60px rgba(0, 234, 255, 0.25);
+    padding: 22px;
+    transform: translateY(8px) scale(0.97);
+    transition: transform 0.25s var(--easing);
+    position: relative;
+  }
+  .inspect-mask.show .inspect { transform: translateY(0) scale(1); }
+  .inspect .close {
+    position: absolute; top: 10px; right: 10px;
+  }
+  .inspect .num {
+    font: 11px/1 ui-monospace, monospace;
+    letter-spacing: 0.2em; color: var(--text-mute);
+    margin-bottom: 6px;
+  }
+  .inspect h2 {
+    margin: 0 0 4px; font-size: 22px; font-weight: 600;
+    background: linear-gradient(120deg, #fff, var(--cyan));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .inspect .badge {
+    display: inline-block; margin: 0 0 10px;
+    font-size: 10px; padding: 3px 8px;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    border: 1px solid var(--cyan); color: var(--cyan); border-radius: 999px;
+  }
+  .inspect p { margin: 0 0 14px; line-height: 1.55; color: var(--text-dim); }
+  .inspect .crop {
+    width: 100%; aspect-ratio: 16/9;
+    border-radius: 12px;
+    background-size: cover; background-position: center;
+    border: 1px solid var(--line-strong);
+    box-shadow: 0 0 30px rgba(0,234,255,0.15);
+    margin-bottom: 14px;
+  }
+  .inspect .meta {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    font: 11px/1.4 ui-monospace, monospace; color: var(--text-dim);
+  }
+  .inspect .meta .k { color: var(--text-mute); display: block; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2px; }
 
   /* ============== Right panel: parts list ============== */
   .right-panel {
@@ -727,6 +930,7 @@
 </head>
 <body>
 
+<div class="ar-bg" aria-hidden="true"><video id="ar-video" autoplay playsinline muted></video></div>
 <div class="grid-bg" aria-hidden="true"></div>
 <div class="scan" aria-hidden="true"></div>
 
@@ -764,6 +968,7 @@
       <div class="preview-card hidden" id="preview-card">
         <img id="preview-img" alt="Uploaded preview" />
         <div class="scan-line"></div>
+        <div class="corners"><i></i><i></i><i></i><i></i></div>
       </div>
 
       <div id="parts-layer"></div>
@@ -772,6 +977,35 @@
     </div>
 
     <canvas id="particles" aria-hidden="true"></canvas>
+
+    <!-- Hand reticles overlaid on stage -->
+    <div class="hand-reticle" id="reticle-0" data-hand="0">
+      <div class="ring"></div><div class="arc"></div><div class="dot"></div>
+      <div class="label">HAND A</div>
+    </div>
+    <div class="hand-reticle" id="reticle-1" data-hand="1">
+      <div class="ring"></div><div class="arc"></div><div class="dot"></div>
+      <div class="label">HAND B</div>
+    </div>
+
+    <!-- Two-hand gesture progress meter -->
+    <div class="gesture-meter" id="gesture-meter">
+      <span id="gm-label">SPREAD</span>
+      <span class="bar"><b></b><i id="gm-bar"></i></span>
+      <span id="gm-action" class="action">DISSECT</span>
+    </div>
+
+    <!-- Scan Live countdown overlay -->
+    <div class="dropzone" id="scan-overlay" style="z-index:30;">
+      <div class="dropzone-inner" style="border-style:solid;border-color:var(--magenta);max-width:340px;">
+        <div class="dropzone-icon" style="background:linear-gradient(135deg, rgba(255,61,240,0.3), rgba(0,234,255,0.18));border-color:var(--magenta);">
+          <svg class="ico" viewBox="0 0 24 24" width="28" height="28"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+        </div>
+        <h3 class="dropzone-title">Hold object up</h3>
+        <p class="dropzone-sub" style="margin:0 0 10px;">Capturing in <b id="scan-count" style="color:var(--magenta);font-size:18px;">3</b>…</p>
+        <button class="btn btn-ghost" id="scan-cancel">Cancel</button>
+      </div>
+    </div>
 
     <!-- Drop zone -->
     <div class="dropzone show" id="dropzone">
@@ -835,6 +1069,14 @@
       <button class="btn" id="btn-camera" title="Toggle camera">
         <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         <span class="lbl-text">Camera</span>
+      </button>
+      <button class="btn" id="btn-scan" title="Hold an object up and capture a frame">
+        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/></svg>
+        <span class="lbl-text">Scan Live</span>
+      </button>
+      <button class="btn" id="btn-ar" title="AR background mode">
+        <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+        <span class="lbl-text">AR</span>
       </button>
       <button class="btn" id="btn-guide" title="Toggle gesture guide">
         <svg class="ico" viewBox="0 0 24 24" width="16" height="16"><path d="M9 11a3 3 0 1 1 6 0c0 2-3 3-3 5"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>
@@ -910,6 +1152,24 @@
     <div class="row">
       <button class="btn" id="settings-clear">Clear key</button>
       <button class="btn btn-pri" id="settings-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="inspect-mask" id="inspect-mask">
+  <div class="inspect" role="dialog" aria-modal="true" aria-labelledby="ins-title">
+    <button class="btn btn-ghost btn-icon close" id="ins-close" aria-label="Close">
+      <svg class="ico" viewBox="0 0 24 24" width="14" height="14"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
+    <div class="num" id="ins-num">PART 01 / 00</div>
+    <h2 id="ins-title">Component</h2>
+    <div class="badge" id="ins-cat">part</div>
+    <div class="crop" id="ins-crop"></div>
+    <p id="ins-desc"></p>
+    <div class="meta">
+      <div><span class="k">Color hint</span><span id="ins-color">—</span></div>
+      <div><span class="k">Size</span><span id="ins-size">—</span></div>
+      <div><span class="k">Position</span><span id="ins-pos">—</span></div>
     </div>
   </div>
 </div>
@@ -1279,7 +1539,10 @@ const Stage = {
       `;
       el.addEventListener("mouseenter", () => this.hover(i));
       el.addEventListener("mouseleave", () => this.hover(-1));
-      el.addEventListener("click", () => { this.focus(i); if (this.state !== "exploded") this.explode(); });
+      el.addEventListener("click", () => {
+        if (this.state !== "exploded") this.explode();
+        this.focus(i, { inspect: true });
+      });
       list.appendChild(el);
     });
   },
@@ -1300,7 +1563,7 @@ const Stage = {
       `;
       el.addEventListener("mouseenter", () => this.hover(i));
       el.addEventListener("mouseleave", () => this.hover(-1));
-      el.addEventListener("click", () => this.focus(i));
+      el.addEventListener("click", () => this.focus(i, { inspect: true }));
       this.partsLayer.appendChild(el);
       return el;
     });
@@ -1421,13 +1684,14 @@ const Stage = {
     if (idx >= 0) Audio.hover();
   },
 
-  focus(idx) {
+  focus(idx, opts = {}) {
     if (this.parts.length === 0) return;
     if (idx < 0) idx = this.parts.length - 1;
     if (idx >= this.parts.length) idx = 0;
     this.focusedIdx = idx;
     this.updateFocusUI();
     Audio.click();
+    if (opts.inspect) Inspect.open(idx);
   },
 
   updateFocusUI() {
@@ -1456,6 +1720,7 @@ const Stage = {
     this.partsLayer.innerHTML = "";
     this.connectors.innerHTML = "";
     this.previewCard.classList.add("hidden");
+    this.previewCard.classList.remove("scanning");
     this.previewCard.style.transform = "translate(-50%, -50%)";
     this.previewCard.style.filter = "";
     this.imgEl.src = "";
@@ -1464,7 +1729,9 @@ const Stage = {
     $("#dropzone").classList.add("show");
     $("#right-panel").classList.add("hidden");
     $("#cam-widget").classList.remove("has-right-panel");
+    $("#inspect-mask")?.classList.remove("show");
     this.focusedIdx = -1; this.hoverIdx = -1;
+    if (typeof Gesture !== "undefined") Gesture.reset();
   }
 };
 
@@ -1592,6 +1859,8 @@ const Cam = {
       throw e;
     }
     this.video.srcObject = this.stream;
+    const arVideo = $("#ar-video");
+    if (arVideo) { try { arVideo.srcObject = this.stream; arVideo.play().catch(()=>{}); } catch {} }
     await new Promise(r => { this.video.onloadedmetadata = () => { this.video.play(); r(); }; });
     this._setupCanvas();
 
@@ -1627,10 +1896,14 @@ const Cam = {
       this.stream = null;
     }
     if (this.video) this.video.srcObject = null;
+    const arVideo = $("#ar-video");
+    if (arVideo) arVideo.srcObject = null;
     $("#cam-widget").classList.add("hidden");
     setPill("cam-pill", null, "CAM");
     if (this.hands?.close) try { this.hands.close(); } catch {}
     this.hands = null;
+    Gesture.reset();
+    Gesture.hideReticles();
   },
 
   toggle() { if (this.running) this.stop(); else return this.start(); },
@@ -1700,22 +1973,47 @@ const Cam = {
 };
 
 /* ----------------------------- Gesture recognizer ----------------------------- */
+/* =========================================================
+ * Gesture v2 — per-hand smoothed state machine
+ * Detects per-hand: position (index tip + palm centroid), pinch (thumb-index),
+ * openness, finger flags. Then computes:
+ *   - Two-hand spread/close progress (live progress meter)
+ *   - Spread cross-up trigger -> Dissect
+ *   - Close cross-down trigger -> Assemble
+ *   - Single-hand pinch-and-hold over a card -> Grab & drag
+ *   - Index-point hover (cursor reticle on stage)
+ *   - Open palm (5 fingers extended) -> Pause
+ *   - Swipe with wrist velocity -> Cycle parts
+ * ========================================================= */
 const Gesture = {
-  current: "idle",
-  confidence: 0,
-  twoHandPrev: null,
+  hands: [null, null],          // per-hand state
+  twoHandRatioEMA: null,         // smoothed normalized hand-pair distance
+  twoHandBaseline: null,         // baseline ratio set when both hands first detected
+  cooldownExplode: 0,
+  cooldownAssemble: 0,
   swipeBuf: [],
   lastSwipeT: 0,
   paused: false,
-  lastPointT: 0,
-  pointSmooth: { x: 0, y: 0 },
-  cooldownExplode: 0,
-  cooldownAssemble: 0,
+  grab: null,                    // { handIdx, cardIdx, offX, offY }
+  pinchProgress: [0, 0],         // 0..1 per hand
+  current: "idle",
+  confidence: 0,
+  lastUiUpdate: 0,
 
   reset() {
-    this.current = "idle"; this.confidence = 0;
-    this.twoHandPrev = null; this.swipeBuf = [];
+    this.hands = [null, null];
+    this.twoHandRatioEMA = null;
+    this.twoHandBaseline = null;
+    this.swipeBuf = [];
     this.cooldownExplode = 0; this.cooldownAssemble = 0;
+    this.grab = null;
+    this.pinchProgress = [0, 0];
+  },
+
+  hideReticles() {
+    $("#reticle-0")?.classList.remove("show", "pinching");
+    $("#reticle-1")?.classList.remove("show", "pinching");
+    $("#gesture-meter")?.classList.remove("show");
   },
 
   process(res) {
@@ -1724,125 +2022,246 @@ const Gesture = {
     const t = now();
     let g = "idle", conf = 0;
 
+    // --- Build per-hand state ---
+    const r = $("#stage-wrap").getBoundingClientRect();
+    const states = [];
+    for (let i = 0; i < lms.length && i < 2; i++) {
+      const lm = lms[i];
+      const isRight = (handed[i]?.label || "").toLowerCase() === "right";
+      const fingers = fingerStates(lm, isRight);
+      const palm = lm[9];
+      const indexTip = lm[8], thumbTip = lm[4];
+      const hSize = handSize(lm);
+      const pinchD = dist(thumbTip.x, thumbTip.y, indexTip.x, indexTip.y);
+      const pinchN = pinchD / Math.max(0.04, hSize);
+      // pinchN < 0.5 = pinching, 0.5–1.2 = open. Smooth and convert to 0..1 progress
+      const pinchProg = clamp(1 - (pinchN - 0.35) / 0.55, 0, 1);
+      const isPinching = pinchProg > 0.7;
+      const isPointing = fingers[1] && !fingers[2] && !fingers[3] && !fingers[4];
+      const isOpenPalm = fingers.filter(Boolean).length === 5;
+
+      // Cursor pos = midpoint of thumb+index (works for pinch and point)
+      const cursor = midpoint(thumbTip, indexTip);
+      // smooth
+      const prev = this.hands[i];
+      const sx = prev ? lerp(prev.cx, cursor.x, 0.45) : cursor.x;
+      const sy = prev ? lerp(prev.cy, cursor.y, 0.45) : cursor.y;
+
+      states[i] = {
+        cx: sx, cy: sy,
+        px: sx * r.width, py: sy * r.height,
+        pinchN, pinchProg, isPinching,
+        isPointing, isOpenPalm,
+        hSize, palm,
+      };
+
+      this.pinchProgress[i] = lerp(this.pinchProgress[i], pinchProg, 0.5);
+      this._updateReticle(i, states[i]);
+    }
+    this.hands = states.concat([null, null]).slice(0, 2);
+
+    // hide unused reticles
+    for (let i = lms.length; i < 2; i++) {
+      $("#reticle-" + i)?.classList.remove("show", "pinching");
+    }
+
     if (lms.length === 0) {
+      this._endGrab();
+      Stage.hover(-1);
+      this._setMeter(false);
+      this.twoHandBaseline = null; this.twoHandRatioEMA = null;
+      this.swipeBuf = [];
       this._set("idle", 0);
-      this._clearPointer();
-      this.twoHandPrev = null;
       return;
     }
 
-    // --- Two hand pinch detection ---
-    if (lms.length >= 2) {
-      const a = lms[0], b = lms[1];
-      const aPinch = midpoint(a[4], a[8]);
-      const bPinch = midpoint(b[4], b[8]);
-      const d = dist(aPinch.x, aPinch.y, bPinch.x, bPinch.y);
-      const palmDist = (handSize(a) + handSize(b)) / 2;  // normalize by hand size
-      const ratio = d / Math.max(0.05, palmDist);
-      if (this.twoHandPrev != null) {
-        const dr = ratio - this.twoHandPrev;
-        const speed = Math.abs(dr);
-        if (speed > 0.025) {
-          if (dr > 0 && ratio > 1.8 && t - this.cooldownExplode > 800) {
-            this.cooldownExplode = t;
-            Stage.explode();
-            this._set("dissect", 0.95);
-            this.twoHandPrev = ratio;
-            return;
-          } else if (dr < 0 && ratio < 1.0 && t - this.cooldownAssemble > 800) {
-            this.cooldownAssemble = t;
-            Stage.assemble();
-            this._set("assemble", 0.95);
-            this.twoHandPrev = ratio;
-            return;
-          }
-        }
-        // continuous label
-        if (dr > 0.015) g = "spreading", conf = clamp(speed * 12, 0, 0.85);
-        else if (dr < -0.015) g = "closing", conf = clamp(speed * 12, 0, 0.85);
-      }
-      this.twoHandPrev = ratio;
-    } else {
-      this.twoHandPrev = null;
+    // --- Open palm (any hand) => pause ---
+    const anyOpenPalm = states.some(s => s?.isOpenPalm);
+    if (anyOpenPalm) {
+      if (!this.paused) { this.paused = true; Stage.pause(true); }
+      g = "pause"; conf = 0.9;
+    } else if (this.paused) {
+      this.paused = false; Stage.pause(false);
     }
 
-    // --- Single hand: palm / point / swipe ---
-    if (lms.length === 1 || g === "idle" || g === "spreading" || g === "closing") {
-      const lm = lms[0];
-      const fingers = fingerStates(lm, handed[0]?.label === "Right");
-      const extended = fingers.filter(Boolean).length;
-
-      if (extended === 5) {
-        // open palm — pause
-        if (!this.paused) { this.paused = true; Stage.pause(true); }
-        if (g === "idle") { g = "pause"; conf = 0.9; }
+    // --- Single-hand pinch-grab on a part card ---
+    // Active grab takes precedence over everything
+    if (this.grab) {
+      const s = states[this.grab.handIdx];
+      if (s && s.isPinching) {
+        // continue dragging
+        const card = Stage.cards[this.grab.cardIdx];
+        if (card) {
+          const cx = r.width / 2, cy = r.height / 2;
+          const tx = (s.px - cx) + this.grab.offX;
+          const ty = (s.py - cy) + this.grab.offY;
+          card.dataset.tx = tx; card.dataset.ty = ty;
+          card.style.transform = `translate(-50%, -50%) translate3d(${tx}px, ${ty}px, 60px) rotate(0deg)`;
+          card.classList.add("focused");
+          this.grab.moved = Math.max(this.grab.moved,
+            Math.hypot(s.px - this.grab.startX, s.py - this.grab.startY));
+        }
+        g = "grabbing"; conf = 0.95;
+        this._set(g, conf);
+        return;
       } else {
-        if (this.paused) { this.paused = false; Stage.pause(false); }
+        // released — if barely moved, open inspect
+        const tap = (this.grab.moved < 28 && (t - this.grab.startT) < 1200);
+        const ci = this.grab.cardIdx;
+        this._endGrab();
+        Stage.drawConnectors();
+        if (tap) Inspect.open(ci);
       }
+    }
 
-      // Index point
-      const isPointing = fingers[1] && !fingers[2] && !fingers[3] && !fingers[4];
-      if (isPointing) {
-        const tip = lm[8];
-        // selfieMode already mirrors landmarks to match the preview
-        const sx = tip.x;
-        const sy = tip.y;
-        this.pointSmooth.x = lerp(this.pointSmooth.x || sx, sx, 0.35);
-        this.pointSmooth.y = lerp(this.pointSmooth.y || sy, sy, 0.35);
-        this._handlePoint(this.pointSmooth.x, this.pointSmooth.y);
-        if (g === "idle") { g = "point"; conf = 0.85; }
-        this.lastPointT = t;
-      } else {
-        if (t - this.lastPointT > 350) this._clearPointer();
+    // Try start grab if a hand is pinching near a card (only when exploded)
+    if (Stage.state === "exploded") {
+      for (let i = 0; i < states.length; i++) {
+        const s = states[i]; if (!s || !s.isPinching) continue;
+        const idx = this._nearestCard(s.px, s.py, 110);
+        if (idx >= 0) {
+          const card = Stage.cards[idx];
+          const cr = card.getBoundingClientRect();
+          const stageR = r;
+          const cardCx = cr.left + cr.width / 2 - stageR.left;
+          const cardCy = cr.top + cr.height / 2 - stageR.top;
+          this.grab = { handIdx: i, cardIdx: idx,
+            offX: cardCx - s.px, offY: cardCy - s.py,
+            startX: s.px, startY: s.py, startT: t, moved: 0 };
+          Stage.focus(idx);
+          card.style.transition = "transform 0.06s linear, border-color 0.2s ease, box-shadow 0.2s ease";
+          $("#connectors")?.classList.remove("show");
+          Audio.click();
+          g = "grab"; conf = 0.95;
+          this._set(g, conf);
+          return;
+        }
       }
+    } else if (states.some(s => s?.isPinching) && Stage.state === "preview") {
+      // Pinch in preview state -> trigger dissect (a crisp single-hand "summon" action)
+      if (t - this.cooldownExplode > 800) {
+        this.cooldownExplode = t;
+        Stage.explode();
+        Audio.explode();
+        g = "summon"; conf = 0.95;
+        this._set(g, conf);
+        return;
+      }
+    }
 
-      // Swipe — track wrist x over time
-      const wrist = lm[0];
+    // --- Two-hand spread / close detection ---
+    if (states.length >= 2 && states[0] && states[1]) {
+      const a = states[0], b = states[1];
+      const d = dist(a.cx, a.cy, b.cx, b.cy);
+      const avgHand = (a.hSize + b.hSize) / 2;
+      const ratio = d / Math.max(0.05, avgHand);
+      this.twoHandRatioEMA = this.twoHandRatioEMA == null
+        ? ratio
+        : lerp(this.twoHandRatioEMA, ratio, 0.35);
+      if (this.twoHandBaseline == null) this.twoHandBaseline = this.twoHandRatioEMA;
+
+      // Live progress against baseline
+      const delta = this.twoHandRatioEMA - this.twoHandBaseline;
+      const SPREAD_TRIGGER = 1.4;   // additional ratio above baseline to fire
+      const CLOSE_TRIGGER  = -1.2;
+      const progress = clamp(delta / SPREAD_TRIGGER, -1, 1);
+      this._setMeter(true, progress, Stage.state === "exploded");
+
+      if (delta >= SPREAD_TRIGGER && t - this.cooldownExplode > 700 && Stage.state !== "exploded") {
+        this.cooldownExplode = t;
+        Stage.explode(); Audio.explode();
+        g = "dissect"; conf = 1.0;
+        this.twoHandBaseline = this.twoHandRatioEMA - 0.4;
+      } else if (delta <= CLOSE_TRIGGER && t - this.cooldownAssemble > 700 && Stage.state === "exploded") {
+        this.cooldownAssemble = t;
+        Stage.assemble(); Audio.assemble();
+        g = "assemble"; conf = 1.0;
+        this.twoHandBaseline = this.twoHandRatioEMA + 0.4;
+      } else if (delta > 0.3) g = "spreading", conf = clamp(delta / SPREAD_TRIGGER, 0.2, 0.9);
+      else if (delta < -0.3) g = "closing", conf = clamp(-delta / -CLOSE_TRIGGER, 0.2, 0.9);
+    } else {
+      this.twoHandBaseline = null; this.twoHandRatioEMA = null;
+      this._setMeter(false);
+    }
+
+    // --- Index point hover ---
+    const pointer = states.find(s => s?.isPointing);
+    if (pointer) {
+      const idx = this._nearestCard(pointer.px, pointer.py, 130);
+      if (idx >= 0) Stage.hover(idx);
+      else Stage.hover(-1);
+      if (g === "idle") { g = "point"; conf = 0.7; }
+    } else {
+      Stage.hover(-1);
+    }
+
+    // --- Swipe (use first hand wrist) ---
+    if (states[0] && Stage.state === "exploded") {
+      const wrist = lms[0][0];
       this.swipeBuf.push({ t, x: wrist.x });
-      while (this.swipeBuf.length && t - this.swipeBuf[0].t > 380) this.swipeBuf.shift();
-      if (this.swipeBuf.length >= 4 && t - this.lastSwipeT > 700 && Stage.state === "exploded") {
+      while (this.swipeBuf.length && t - this.swipeBuf[0].t > 350) this.swipeBuf.shift();
+      if (this.swipeBuf.length >= 4 && t - this.lastSwipeT > 600) {
         const dx = this.swipeBuf[this.swipeBuf.length - 1].x - this.swipeBuf[0].x;
         const dt = this.swipeBuf[this.swipeBuf.length - 1].t - this.swipeBuf[0].t;
         const v = dx / Math.max(1, dt) * 1000;
-        if (Math.abs(v) > 1.2 && Math.abs(dx) > 0.18) {
+        if (Math.abs(v) > 1.0 && Math.abs(dx) > 0.16) {
           if (v > 0) Stage.cycle(1); else Stage.cycle(-1);
           this.lastSwipeT = t; this.swipeBuf = [];
           g = v > 0 ? "swipe right" : "swipe left"; conf = 0.85;
         }
       }
+    } else {
+      this.swipeBuf = [];
     }
 
-    if (g === "idle" && lms.length > 0) { g = "tracking"; conf = 0.4; }
+    if (g === "idle") { g = "tracking"; conf = 0.35; }
     this._set(g, conf);
   },
 
-  _set(g, conf) {
-    this.current = g;
-    this.confidence = lerp(this.confidence, conf, 0.4);
-    const label = $("#gesture-now");
-    label.textContent = g.toUpperCase();
-    $("#conf-bar").style.width = (this.confidence * 100).toFixed(1) + "%";
-    // highlight gesture guide row
-    $$("#gg-list .gg-item").forEach(el => el.classList.remove("active"));
-    const guideKey = ({
-      "dissect": "explode", "spreading": "explode",
-      "assemble": "assemble", "closing": "assemble",
-      "pause": "palm",
-      "point": "point",
-      "swipe right": "swipe", "swipe left": "swipe",
-    })[g];
-    if (guideKey) {
-      const item = $(`#gg-list .gg-item[data-g='${guideKey}']`);
-      if (item) item.classList.add("active");
+  _endGrab() {
+    if (this.grab) {
+      const card = Stage.cards[this.grab.cardIdx];
+      if (card) card.style.transition = "";
+      this.grab = null;
     }
   },
 
-  _handlePoint(nx, ny) {
-    // find nearest card under that normalized stage coordinate
-    if (Stage.state !== "exploded") return;
+  _updateReticle(i, s) {
+    const ret = $("#reticle-" + i);
+    if (!ret) return;
+    ret.classList.add("show");
+    ret.classList.toggle("pinching", s.isPinching);
     const r = $("#stage-wrap").getBoundingClientRect();
-    const px = nx * r.width;
-    const py = ny * r.height;
+    ret.style.transform = `translate(${s.px}px, ${s.py}px)`;
+    const arc = ret.querySelector(".arc");
+    if (arc) arc.style.transform = `rotate(${(s.pinchProg * 360) | 0}deg)`;
+    const lbl = ret.querySelector(".label");
+    if (lbl) {
+      if (s.isPinching) lbl.textContent = "PINCH";
+      else if (s.isPointing) lbl.textContent = "POINT";
+      else if (s.isOpenPalm) lbl.textContent = "PAUSE";
+      else lbl.textContent = i === 0 ? "HAND A" : "HAND B";
+    }
+  },
+
+  _setMeter(show, prog = 0, isExploded = false) {
+    const m = $("#gesture-meter"); if (!m) return;
+    m.classList.toggle("show", show);
+    if (!show) return;
+    const bar = $("#gm-bar");
+    const labelEl = $("#gm-label");
+    const actionEl = $("#gm-action");
+    // map progress (-1..1) to bar fill 50% center → 100% spread / 0% close
+    const fill = clamp(50 + prog * 50, 0, 100);
+    bar.style.width = fill + "%";
+    if (prog > 0.05) { labelEl.textContent = "SPREAD"; actionEl.textContent = isExploded ? "—" : "DISSECT"; }
+    else if (prog < -0.05) { labelEl.textContent = "CLOSE"; actionEl.textContent = isExploded ? "ASSEMBLE" : "—"; }
+    else { labelEl.textContent = "HOLD"; actionEl.textContent = "READY"; }
+  },
+
+  _nearestCard(px, py, maxDist) {
+    if (Stage.cards.length === 0) return -1;
+    const r = $("#stage-wrap").getBoundingClientRect();
     let best = -1, bestD = Infinity;
     Stage.cards.forEach((c, i) => {
       const cr = c.getBoundingClientRect();
@@ -1851,12 +2270,33 @@ const Gesture = {
       const d = (px - cx) * (px - cx) + (py - cy) * (py - cy);
       if (d < bestD) { bestD = d; best = i; }
     });
-    // require pointer to be reasonably close (< 140px)
-    if (best !== -1 && Math.sqrt(bestD) < 140) Stage.hover(best);
-    else Stage.hover(-1);
+    return Math.sqrt(bestD) < maxDist ? best : -1;
   },
 
-  _clearPointer() { Stage.hover(-1); }
+  _set(g, conf) {
+    this.current = g;
+    this.confidence = lerp(this.confidence, conf, 0.4);
+    const t = now();
+    if (t - this.lastUiUpdate < 60) return;
+    this.lastUiUpdate = t;
+    const label = $("#gesture-now");
+    if (label) label.textContent = g.toUpperCase();
+    const cb = $("#conf-bar");
+    if (cb) cb.style.width = (this.confidence * 100).toFixed(1) + "%";
+    $$("#gg-list .gg-item").forEach(el => el.classList.remove("active"));
+    const guideKey = ({
+      "dissect": "explode", "spreading": "explode", "summon": "explode",
+      "assemble": "assemble", "closing": "assemble",
+      "pause": "palm",
+      "point": "point",
+      "swipe right": "swipe", "swipe left": "swipe",
+      "grab": "point", "grabbing": "point",
+    })[g];
+    if (guideKey) {
+      const item = $(`#gg-list .gg-item[data-g='${guideKey}']`);
+      if (item) item.classList.add("active");
+    }
+  }
 };
 
 function midpoint(a, b) { return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; }
@@ -1878,6 +2318,102 @@ function fingerStates(lm, isRight) {
   out.push(lm[20].y < lm[18].y);
   return out;
 }
+
+/* ----------------------------- Inspect modal ----------------------------- */
+const Inspect = {
+  init() {
+    $("#ins-close").addEventListener("click", () => this.close());
+    $("#inspect-mask").addEventListener("click", (e) => { if (e.target.id === "inspect-mask") this.close(); });
+  },
+  open(idx) {
+    const p = Stage.parts[idx]; if (!p) return;
+    $("#ins-num").textContent = `PART ${String(idx + 1).padStart(2, "0")} / ${String(Stage.parts.length).padStart(2, "0")}`;
+    $("#ins-title").textContent = p.name;
+    $("#ins-cat").textContent = p.category;
+    $("#ins-cat").style.color = p.color_hint || categoryColor(p.category);
+    $("#ins-cat").style.borderColor = p.color_hint || categoryColor(p.category);
+    $("#ins-desc").textContent = p.description || "—";
+    $("#ins-color").textContent = p.color_hint || "—";
+    $("#ins-size").textContent = p.size_hint || "medium";
+    $("#ins-pos").textContent = `${(p.position_hint.x * 100).toFixed(0)},${(p.position_hint.y * 100).toFixed(0)}`;
+    // Crop the original image around position_hint
+    const crop = $("#ins-crop");
+    crop.style.backgroundImage = Stage.imageSrc ? `url("${Stage.imageSrc}")` : "";
+    const sz = ({ small: 22, medium: 32, large: 48 })[p.size_hint] || 32;
+    crop.style.backgroundPosition = `${(p.position_hint.x * 100).toFixed(1)}% ${(p.position_hint.y * 100).toFixed(1)}%`;
+    crop.style.backgroundSize = `${(100 / sz * 100).toFixed(0)}%`;
+    $("#inspect-mask").classList.add("show");
+    Audio.click();
+  },
+  close() { $("#inspect-mask").classList.remove("show"); }
+};
+
+/* ----------------------------- ScanLive (object in hand) ----------------------------- */
+const ScanLive = {
+  active: false,
+  async run() {
+    if (this.active) return;
+    if (!Cam.running) {
+      try { await Cam.start(); } catch { return; }
+    }
+    if (!Settings.data.apiKey) { UI.openSettings(); toast("Add your API key first.", "error"); return; }
+    this.active = true;
+    document.body.classList.add("ar");                  // turn on AR background to give feedback
+    const overlay = $("#scan-overlay");
+    overlay.classList.add("show");
+    let cancelled = false;
+    const cancel = () => { cancelled = true; };
+    $("#scan-cancel").onclick = cancel;
+    for (let n = 3; n >= 1; n--) {
+      $("#scan-count").textContent = n;
+      Audio.blip(420 + n * 80, 0.08, "square", 0.04);
+      await wait(800);
+      if (cancelled) break;
+    }
+    overlay.classList.remove("show");
+    if (cancelled) { this.active = false; return; }
+    // capture frame
+    const v = Cam.video;
+    const c = document.createElement("canvas");
+    c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
+    const ctx = c.getContext("2d");
+    // mirror to match user's view
+    ctx.translate(c.width, 0); ctx.scale(-1, 1);
+    ctx.drawImage(v, 0, 0, c.width, c.height);
+    const dataUrl = c.toDataURL("image/jpeg", 0.9);
+    Audio.blip(900, 0.12, "sine", 0.05);
+    Stage.reset();
+    Stage.setImage(dataUrl);
+    this.active = false;
+    await App.runAnalysis(dataUrl, "Scanned " + new Date().toLocaleTimeString());
+  }
+};
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ----------------------------- Stage parallax (camera-relative tilt) ----------------------------- */
+const Parallax = {
+  rx: 0, ry: 0, tRx: 0, tRy: 0,
+  init() {
+    addEventListener("mousemove", (e) => {
+      const w = innerWidth, h = innerHeight;
+      this.tRy = ((e.clientX / w) - 0.5) * 8;
+      this.tRx = -((e.clientY / h) - 0.5) * 6;
+    }, { passive: true });
+    const tick = () => {
+      this.rx = lerp(this.rx, this.tRx, 0.08);
+      this.ry = lerp(this.ry, this.tRy, 0.08);
+      const stage = $("#stage");
+      if (stage) stage.style.transform = `rotateX(${this.rx.toFixed(2)}deg) rotateY(${this.ry.toFixed(2)}deg)`;
+      requestAnimationFrame(tick);
+    };
+    tick();
+  },
+  // Driven by hand position when tracking is on
+  setHand(nx, ny) {
+    this.tRy = ((nx) - 0.5) * 12;
+    this.tRx = -((ny) - 0.5) * 8;
+  }
+};
 
 /* ----------------------------- Touch / Mouse pinch ----------------------------- */
 const TouchPinch = {
@@ -1953,6 +2489,14 @@ const UI = {
     $("#btn-share").addEventListener("click", () => App.shareSnapshot());
     $("#btn-guide").addEventListener("click", () => $("#gesture-guide").classList.toggle("hidden"));
     $("#gg-close").addEventListener("click", () => $("#gesture-guide").classList.add("hidden"));
+    $("#btn-scan").addEventListener("click", () => ScanLive.run());
+    $("#btn-ar").addEventListener("click", async () => {
+      const on = !document.body.classList.contains("ar");
+      if (on && !Cam.running) { try { await Cam.start(); } catch { return; } }
+      document.body.classList.toggle("ar", on);
+      $("#btn-ar").classList.toggle("btn-pri", on);
+      toast(on ? "AR mode on — your camera is the backdrop." : "AR off.");
+    });
 
     // Keyboard
     addEventListener("keydown", (e) => {
@@ -1960,7 +2504,11 @@ const UI = {
       if (e.code === "Space") { e.preventDefault(); Stage.toggleExplode(); }
       else if (e.code === "ArrowRight") { e.preventDefault(); Stage.cycle(1); }
       else if (e.code === "ArrowLeft") { e.preventDefault(); Stage.cycle(-1); }
-      else if (e.code === "Escape") { Stage.assemble(); }
+      else if (e.code === "Enter") { e.preventDefault(); if (Stage.focusedIdx >= 0) Inspect.open(Stage.focusedIdx); }
+      else if (e.code === "Escape") {
+        if ($("#inspect-mask").classList.contains("show")) Inspect.close();
+        else Stage.assemble();
+      }
     });
   },
 
@@ -2022,6 +2570,8 @@ const App = {
     Upload.init();
     UI.init();
     TouchPinch.init();
+    Inspect.init();
+    Parallax.init();
 
     // Initial pill states
     setPill("api-pill", Settings.data.apiKey ? "live" : "warn", "API");
@@ -2059,7 +2609,9 @@ const App = {
       Stage.endAnalyzing();
       setPill("api-pill", "live", "API");
       $("#gesture-guide").classList.remove("hidden");
-      toast(`Found ${result.parts.length} components. Press Space or pinch out.`, "success");
+      const r = $("#stage-wrap").getBoundingClientRect();
+      Particles.burst(r.width / 2, r.height / 2, 30, ["#00eaff", "#9d6cff"]);
+      toast(`Found ${result.parts.length} components. Pinch out (or Space) to dissect.`, "success");
     } catch (e) {
       Stage.endAnalyzing();
       setPill("api-pill", "bad", "API");
